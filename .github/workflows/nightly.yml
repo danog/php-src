@@ -394,6 +394,38 @@ jobs:
             cd ..
           done
           exit $X
+      - name: Test Psalm
+        if: matrix.branch.ref != 'PHP-8.0'
+        run: |
+          echo "Testing vimeo/psalm"
+          git clone https://github.com/vimeo/psalm --depth 1
+          cd "psalm"
+          git rev-parse HEAD
+          php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          export ASAN_OPTIONS=exitcode=139
+          vendor/bin/phpunit || EXIT_CODE=$?
+          if [ ${EXIT_CODE:-0} -gt 128 ]; then
+            exit 1
+          fi
+          ./psalm --no-cache || EXIT_CODE=$?
+          if [ ${EXIT_CODE:-0} -gt 128 ]; then
+            exit 1
+          fi
+      - name: Test MadelineProto
+        if: matrix.branch.ref != 'PHP-8.0'
+        run: |
+          echo "Testing danog/madelineproto"
+          git clone https://github.com/amphp/ext-uv --depth 1
+          cd ext-uv && phpize && ./configure --enable-debug && make -j$(/usr/bin/nproc) && make install && cd ..
+          git clone https://github.com/danog/MadelineProto.git --depth 1
+          cd "MadelineProto"
+          git rev-parse HEAD
+          php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          export ASAN_OPTIONS=exitcode=139
+          php tests/handshake.php || EXIT_CODE=$?
+          if [ ${EXIT_CODE:-0} -gt 128 ]; then
+            exit 1
+          fi
       - name: Test Laravel
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
