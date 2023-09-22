@@ -126,16 +126,16 @@ jobs:
         uses: ./.github/actions/test-linux
         with:
           testArtifacts: ${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}_${{ matrix.asan && 'OpCache' || 'Tracing JIT' }}
+          jitType: ${{ matrix.asan && 'disable' || 'tracing' }}
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            ${{ !matrix.asan && '-d opcache.jit_buffer_size=16M' || '' }}
             ${{ matrix.asan && '--asan -x' || '' }}
       - name: Verify generated files are up to date
         if: ${{ !matrix.asan }}
         uses: ./.github/actions/verify-generated-files
   MACOS_DEBUG_NTS:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -160,11 +160,10 @@ jobs:
         uses: ./.github/actions/test-macos
         with:
           testArtifacts: ${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }} Tracing JIT
+          jitType: tracing
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.protect_memory=1
-            -d opcache.jit_buffer_size=16M
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
   WINDOWS:
@@ -288,3 +287,8 @@ jobs:
             ${{ github.sha }} \
             $(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }}) \
             > $GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@v3
+        with:
+          name: profiles
+          path: ${{ github.workspace }}/benchmark/profiles
+          retention-days: 30

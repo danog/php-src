@@ -103,11 +103,11 @@ jobs:
         uses: ./.github/actions/test-linux
         with:
           testArtifacts: ${{ matrix.branch.name }}_${{ matrix.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }} Tracing JIT
+          jitType: tracing
           runTestsParameters: >-
             ${{ matrix.run_tests_parameters }}
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.jit_buffer_size=16M
       - name: Test OpCache
         uses: ./.github/actions/test-linux
         with:
@@ -123,12 +123,11 @@ jobs:
         uses: ./.github/actions/test-linux
         with:
           testArtifacts: ${{ matrix.branch.name }}_${{ matrix.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }} Function JIT
+          jitType: function
           runTestsParameters: >-
             ${{ matrix.run_tests_parameters }}
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.jit_buffer_size=16M
-            -d opcache.jit=1205
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
       - name: Notify Slack
@@ -194,11 +193,11 @@ jobs:
       - name: Test Tracing JIT
         uses: ./.github/actions/test-linux
         with:
+          jitType: tracing
           runTestsParameters: >-
             ${{ matrix.run_tests_parameters }}
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.jit_buffer_size=16M
       - name: Test OpCache
         uses: ./.github/actions/test-linux
         with:
@@ -209,12 +208,11 @@ jobs:
       - name: Test Function JIT
         uses: ./.github/actions/test-linux
         with:
+          jitType: function
           runTestsParameters: >-
             ${{ matrix.run_tests_parameters }}
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.jit_buffer_size=16M
-            -d opcache.jit=1205
       - name: Notify Slack
         if: failure()
         uses: ./.github/actions/notify-slack
@@ -230,7 +228,7 @@ jobs:
         debug: [true, false]
         zts: [true, false]
     name: "${{ matrix.branch.name }}_MACOS_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}"
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -258,11 +256,10 @@ jobs:
         uses: ./.github/actions/test-macos
         with:
           testArtifacts: ${{ matrix.branch.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }} Tracing JIT
+          jitType: tracing
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.protect_memory=1
-            -d opcache.jit_buffer_size=16M
       - name: Test OpCache
         uses: ./.github/actions/test-macos
         with:
@@ -270,17 +267,14 @@ jobs:
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.protect_memory=1
       - name: Test Function JIT
         uses: ./.github/actions/test-macos
         with:
           testArtifacts: ${{ matrix.branch.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }} Function JIT
+          jitType: function
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-            -d opcache.protect_memory=1
-            -d opcache.jit_buffer_size=16M
-            -d opcache.jit=1205
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
       - name: Notify Slack
@@ -321,6 +315,7 @@ jobs:
       - name: Test OpCache
         uses: ./.github/actions/test-linux
         with:
+          jitType: tracing
           runTestsParameters: >-
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
@@ -375,9 +370,56 @@ jobs:
           echo opcache.enable_cli=1 >> /etc/php.d/opcache.ini
           echo opcache.protect_memory=1 >> /etc/php.d/opcache.ini
           echo opcache.jit_buffer_size=1G >> /etc/php.d/opcache.ini
+          echo opcache.jit_max_root_traces=1000000 >> /etc/php.d/opcache.ini
+          echo opcache.jit_max_side_traces=1000000 >> /etc/php.d/opcache.ini
+          echo opcache.jit_max_exit_counters=1000000 >> /etc/php.d/opcache.ini
+          echo opcache.jit_hot_loop=1 >> /etc/php.d/opcache.ini
+          echo opcache.jit_hot_func=1 >> /etc/php.d/opcache.ini
+          echo opcache.jit_hot_return=1 >> /etc/php.d/opcache.ini
+          echo opcache.jit_hot_side_exit=1 >> /etc/php.d/opcache.ini
+          echo memory_limit=-1 >> /etc/php.d/opcache.ini
+          php -v
+      - name: Test PHPSeclib
+        if: always()
+        run: |
+          git clone https://github.com/phpseclib/phpseclib --branch=master
+          cd phpseclib
+          git checkout 259bd9f1e8af11726ed74acf527c2c046549061b
+          export ASAN_OPTIONS=exitcode=139
+          export PHPSECLIB_ALLOW_JIT=1
+          php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          php vendor/bin/paratest --verbose --configuration=tests/phpunit.xml --runner=WrapperRunner || exit $?
+          git clean -ffdx
+      - name: Test Psalm
+        if: matrix.branch.ref != 'PHP-8.0'
+        run: |
+          git clone https://github.com/vimeo/psalm --branch=master
+          cd psalm
+          git checkout 7428e49b115a2a837aa29cf0fafd0ca902fe2457
+          export ASAN_OPTIONS=exitcode=139
+          export PSALM_ALLOW_XDEBUG=1
+          php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          php ./psalm --no-cache || exit $?
+      - name: Test PHPStan
+        if: matrix.branch.ref != 'PHP-8.0'
+        run: |
+          git clone https://github.com/phpstan/phpstan-src
+          cd phpstan-src
+          git checkout 1f608dc6a560f4a5accc854add8e005da0e7ceea
+          sed 's/80299/89999/g' -i conf/config.neon
+          php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          export ASAN_OPTIONS=exitcode=139
+          php bin/phpstan clear-result-cache
+          php bin/phpstan || exit $?
       - name: Test AMPHP
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
+          sudo apt-get update && sudo apt-get install -y libuv1-dev
+          git clone https://github.com/amphp/ext-uv --depth 1
+          cd ext-uv
+          phpize && ./configure --enable-debug && make -j$(nproc) && sudo make install
+          cd ..
+          echo extension=uv >> /etc/php.d/uv.ini
           repositories="amp cache dns file http parallel parser pipeline process serialization socket sync websocket-client websocket-server"
           X=0
           for repository in $repositories; do
