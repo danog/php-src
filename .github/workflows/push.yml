@@ -167,6 +167,7 @@ jobs:
             -d opcache.enable_cli=1
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
+
   WINDOWS:
     name: WINDOWS_X64_ZTS
     runs-on: windows-2019
