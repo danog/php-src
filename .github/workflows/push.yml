@@ -19,6 +19,7 @@ on:
       - PHP-8.2
       - PHP-8.3
       - master
+      - improve_ir_nightly_tests
   pull_request:
     paths-ignore:
       - docs/*
