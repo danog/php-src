@@ -90,6 +90,9 @@ jobs:
     container:
       image: ${{ matrix.docker-image }}
     steps:
+      - name: node
+        run: |
+          apt-get update && apt-get install nodejs -y
       - name: git checkout
         uses: actions/checkout@v4
       - name: apt
