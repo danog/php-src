@@ -67,13 +67,28 @@ jobs:
           - debug: false
             zts: false
             asan: false
+            runs-on: ubuntu-latest
+            docker-image: null
           - debug: true
             zts: true
             asan: true
+            runs-on: ubuntu-latest
+            docker-image: "ubuntu:23.04"
+
+          - debug: false
+            zts: false
+            asan: false
+            runs-on: self-hosted
+            docker-image: "debian:unstable-slim"
+          - debug: true
+            zts: true
+            asan: true
+            runs-on: self-hosted
+            docker-image: "debian:unstable-slim"
     name: "LINUX_X64_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}"
-    runs-on: self-hosted
+    runs-on: ${{ matrix.runs-on }}
     container:
-      image: ${{ matrix.asan && 'ubuntu:23.04' || null }}
+      image: ${{ matrix.docker-image }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -88,10 +103,10 @@ jobs:
           dpkg -l
           echo "::endgroup::"
       - name: Create MSSQL container
-        if: ${{ !matrix.asan }}
+        if: ${{ matrix.docker-image == null }}
         uses: ./.github/actions/setup-mssql
       - name: Create Oracle container
-        if: ${{ !matrix.asan }}
+        if: ${{ matrix.docker-image == null }}
         uses: ./.github/actions/setup-oracle
       - name: Setup Caddy server
         uses: ./.github/actions/setup-caddy
@@ -116,7 +131,7 @@ jobs:
       - name: make install
         uses: ./.github/actions/install-linux
       - name: Setup
-        if: ${{ !matrix.asan }}
+        if: ${{ matrix.docker-image == null }}
         uses: ./.github/actions/setup-x64
       - name: Test
         if: matrix.asan == false
