@@ -69,30 +69,34 @@ jobs:
             asan: false
             runs-on: ubuntu-latest
             docker-image: null
+            arch: X64
           - debug: true
             zts: true
             asan: true
             runs-on: ubuntu-latest
             docker-image: "ubuntu:23.04"
+            arch: X64
 
           - debug: false
             zts: false
             asan: false
             runs-on: self-hosted
             docker-image: "debian:unstable-slim"
+            arch: RISCV64
           - debug: true
             zts: true
             asan: true
             runs-on: self-hosted
             docker-image: "debian:unstable-slim"
-    name: "LINUX_X64_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}"
+            arch: RISCV64
+    name: "LINUX_${{ matrix.arch }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}"
     runs-on: ${{ matrix.runs-on }}
     container:
       image: ${{ matrix.docker-image }}
     steps:
       - name: node
         run: |
-          apt-get update && apt-get install nodejs -y
+          sudo apt-get update && sudo apt-get install nodejs -y
       - name: git checkout
         uses: actions/checkout@v4
       - name: apt
@@ -119,7 +123,7 @@ jobs:
           # This duplicates the "job.name" expression above because
           # GitHub has no way to query the job name (github.job is the
           # job id, not the job name)
-          key: "LINUX_X64_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}-${{hashFiles('main/php_version.h')}}"
+          key: "LINUX_${{ matrix.arch }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}${{ matrix.asan && '_ASAN' || '' }}-${{hashFiles('main/php_version.h')}}"
           append-timestamp: false
       - name: ./configure
         uses: ./.github/actions/configure-x64
