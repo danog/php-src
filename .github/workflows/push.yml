@@ -108,7 +108,7 @@ jobs:
           lscpu
           echo "::endgroup::"
           echo "::group::Show installed package versions"
-          dpkg -l
+          dpkg -l | cat
           echo "::endgroup::"
       - name: Create MSSQL container
         if: ${{ matrix.docker-image == null }}

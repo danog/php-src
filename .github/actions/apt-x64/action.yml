@@ -15,6 +15,7 @@ runs:
         fi
 
         sudo apt-get update -y | true
+        sudo apt-get install -y whiptail
         yes "" | sudo apt-get install -y \
           autoconf \
           gcc \
@@ -71,4 +72,4 @@ runs:
           libqdbm-dev \
           libjpeg-dev \
           libpng-dev \
-          libfreetype-dev || true
+          libfreetype-dev
