@@ -71,4 +71,4 @@ runs:
           libqdbm-dev \
           libjpeg-dev \
           libpng-dev \
-          libfreetype-dev
+          libfreetype-dev || true
