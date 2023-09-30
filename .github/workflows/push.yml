@@ -95,8 +95,9 @@ jobs:
       image: ${{ matrix.docker-image }}
     steps:
       - name: node
+        if: ${{ matrix.docker-image != null }}
         run: |
-          sudo apt-get update && sudo apt-get install nodejs -y
+          apt-get update && apt-get install nodejs -y
       - name: git checkout
         uses: actions/checkout@v4
       - name: apt
