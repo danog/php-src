@@ -15,7 +15,7 @@ runs:
         fi
 
         sudo apt-get update -y | true
-        sudo apt-get install -y \
+        yes "" | sudo apt-get install -y \
           autoconf \
           gcc \
           make \
