@@ -18,7 +18,9 @@
 #include "config.h"
 #endif
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 
 #include "php.h"
 #include "zend_exceptions.h"
@@ -669,7 +671,7 @@ static zend_string* firebird_handle_quoter(pdo_dbh_t *dbh, const zend_string *un
 	zend_string *quoted_str;
 
 	if (ZSTR_LEN(unquoted) == 0) {
-		return zend_string_init("''", 2, 0);
+		return ZSTR_INIT_LITERAL("''", 0);
 	}
 
 	/* Firebird only requires single quotes to be doubled if string lengths are used */

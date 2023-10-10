@@ -63,7 +63,7 @@ readonly=yes
 URL: http://www.w3.org/TR/2003/WD-DOM-Level-3-Core-20030226/DOM3-Core.html#core-ID-6D0FB19E
 Since:
 */
-int dom_namednodemap_length_read(dom_object *obj, zval *retval)
+zend_result dom_namednodemap_length_read(dom_object *obj, zval *retval)
 {
 	ZVAL_LONG(retval, php_dom_get_namednodemap_length(obj));
 	return SUCCESS;
@@ -176,9 +176,9 @@ Since:
 PHP_METHOD(DOMNamedNodeMap, item)
 {
 	zend_long index;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
-		RETURN_THROWS();
-	}
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(index)
+	ZEND_PARSE_PARAMETERS_END();
 	if (index < 0 || ZEND_LONG_INT_OVFL(index)) {
 		zend_argument_value_error(1, "must be between 0 and %d", INT_MAX);
 		RETURN_THROWS();

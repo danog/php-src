@@ -25,15 +25,15 @@
 #include "ext/date/php_date.h"
 #include "zend_smart_str.h"
 
-#if HAVE_SYSEXITS_H
-#include <sysexits.h>
+#ifdef HAVE_SYSEXITS_H
+# include <sysexits.h>
 #endif
-#if HAVE_SYS_SYSEXITS_H
-#include <sys/sysexits.h>
+#ifdef HAVE_SYS_SYSEXITS_H
+# include <sys/sysexits.h>
 #endif
 
 #if PHP_SIGCHILD
-#include <signal.h>
+# include <signal.h>
 #endif
 
 #include "php_syslog.h"
@@ -43,7 +43,7 @@
 #include "exec.h"
 
 #ifdef PHP_WIN32
-#include "win32/sendmail.h"
+# include "win32/sendmail.h"
 #endif
 
 #define SKIP_LONG_HEADER_SEP(str, pos)																	\
@@ -121,7 +121,7 @@ static void php_mail_build_headers_elem(smart_str *s, zend_string *key, zval *va
 			php_mail_build_headers_elems(s, key, val);
 			break;
 		default:
-			zend_type_error("Header \"%s\" must be of type array|string, %s given", ZSTR_VAL(key), zend_zval_type_name(val));
+			zend_type_error("Header \"%s\" must be of type array|string, %s given", ZSTR_VAL(key), zend_zval_value_name(val));
 	}
 }
 
@@ -138,7 +138,7 @@ static void php_mail_build_headers_elems(smart_str *s, zend_string *key, zval *v
 		}
 		ZVAL_DEREF(tmp_val);
 		if (Z_TYPE_P(tmp_val) != IS_STRING) {
-			zend_type_error("Header \"%s\" must only contain values of type string, %s found", ZSTR_VAL(key), zend_zval_type_name(tmp_val));
+			zend_type_error("Header \"%s\" must only contain values of type string, %s found", ZSTR_VAL(key), zend_zval_value_name(tmp_val));
 			break;
 		}
 		php_mail_build_headers_elem(s, key, tmp_val);
@@ -431,6 +431,8 @@ PHPAPI int php_mail(const char *to, const char *subject, const char *message, co
 		MAIL_RET(0);
 	}
 
+	char *line_sep = PG(mail_mixed_lf_and_crlf) ? "\n" : "\r\n";
+
 	if (PG(mail_x_header)) {
 		const char *tmp = zend_get_executed_filename();
 		zend_string *f;
@@ -438,7 +440,7 @@ PHPAPI int php_mail(const char *to, const char *subject, const char *message, co
 		f = php_basename(tmp, strlen(tmp), NULL, 0);
 
 		if (headers != NULL && *headers) {
-			spprintf(&ahdr, 0, "X-PHP-Originating-Script: " ZEND_LONG_FMT ":%s\r\n%s", php_getuid(), ZSTR_VAL(f), headers);
+			spprintf(&ahdr, 0, "X-PHP-Originating-Script: " ZEND_LONG_FMT ":%s%s%s", php_getuid(), ZSTR_VAL(f), line_sep, headers);
 		} else {
 			spprintf(&ahdr, 0, "X-PHP-Originating-Script: " ZEND_LONG_FMT ":%s", php_getuid(), ZSTR_VAL(f));
 		}
@@ -512,12 +514,12 @@ PHPAPI int php_mail(const char *to, const char *subject, const char *message, co
 			MAIL_RET(0);
 		}
 #endif
-		fprintf(sendmail, "To: %s\r\n", to);
-		fprintf(sendmail, "Subject: %s\r\n", subject);
+		fprintf(sendmail, "To: %s%s", to, line_sep);
+		fprintf(sendmail, "Subject: %s%s", subject, line_sep);
 		if (hdr != NULL) {
-			fprintf(sendmail, "%s\r\n", hdr);
+			fprintf(sendmail, "%s%s", hdr, line_sep);
 		}
-		fprintf(sendmail, "\r\n%s\r\n", message);
+		fprintf(sendmail, "%s%s%s", line_sep, message, line_sep);
 		ret = pclose(sendmail);
 
 #if PHP_SIGCHILD

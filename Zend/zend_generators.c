@@ -404,9 +404,7 @@ static HashTable *zend_generator_get_gc(zend_object *object, zval **table, int *
 
 static zend_object *zend_generator_create(zend_class_entry *class_type) /* {{{ */
 {
-	zend_generator *generator;
-
-	generator = emalloc(sizeof(zend_generator));
+	zend_generator *generator = emalloc(sizeof(zend_generator));
 	memset(generator, 0, sizeof(zend_generator));
 
 	/* The key will be incremented on first use, so it'll start at 0 */
@@ -421,8 +419,6 @@ static zend_object *zend_generator_create(zend_class_entry *class_type) /* {{{ *
 	generator->node.ptr.root = NULL;
 
 	zend_object_std_init(&generator->std, class_type);
-	generator->std.handlers = &zend_generator_handlers;
-
 	return (zend_object*)generator;
 }
 /* }}} */
@@ -612,28 +608,46 @@ static zend_result zend_generator_get_next_delegated_value(zend_generator *gener
 		HashTable *ht = Z_ARR(generator->values);
 		HashPosition pos = Z_FE_POS(generator->values);
 
-		Bucket *p;
-		do {
-			if (UNEXPECTED(pos >= ht->nNumUsed)) {
-				/* Reached end of array */
-				goto failure;
-			}
+		if (HT_IS_PACKED(ht)) {
+			do {
+				if (UNEXPECTED(pos >= ht->nNumUsed)) {
+					/* Reached end of array */
+					goto failure;
+				}
 
-			p = &ht->arData[pos];
-			value = &p->val;
-			pos++;
-		} while (Z_ISUNDEF_P(value));
+				value = &ht->arPacked[pos];
+				pos++;
+			} while (Z_ISUNDEF_P(value));
 
-		zval_ptr_dtor(&generator->value);
-		ZVAL_COPY(&generator->value, value);
+			zval_ptr_dtor(&generator->value);
+			ZVAL_COPY(&generator->value, value);
 
-		zval_ptr_dtor(&generator->key);
-		if (p->key) {
-			ZVAL_STR_COPY(&generator->key, p->key);
+			zval_ptr_dtor(&generator->key);
+			ZVAL_LONG(&generator->key, pos - 1);
 		} else {
-			ZVAL_LONG(&generator->key, p->h);
-		}
+			Bucket *p;
 
+			do {
+				if (UNEXPECTED(pos >= ht->nNumUsed)) {
+					/* Reached end of array */
+					goto failure;
+				}
+
+				p = &ht->arData[pos];
+				value = &p->val;
+				pos++;
+			} while (Z_ISUNDEF_P(value));
+
+			zval_ptr_dtor(&generator->value);
+			ZVAL_COPY(&generator->value, value);
+
+			zval_ptr_dtor(&generator->key);
+			if (p->key) {
+				ZVAL_STR_COPY(&generator->key, p->key);
+			} else {
+				ZVAL_LONG(&generator->key, p->h);
+			}
+		}
 		Z_FE_POS(generator->values) = pos;
 	} else {
 		zend_object_iterator *iter = (zend_object_iterator *) Z_OBJ(generator->values);
@@ -1115,6 +1129,7 @@ void zend_register_generator_ce(void) /* {{{ */
 	zend_ce_generator->create_object = zend_generator_create;
 	/* get_iterator has to be assigned *after* implementing the interface */
 	zend_ce_generator->get_iterator = zend_generator_get_iterator;
+	zend_ce_generator->default_object_handlers = &zend_generator_handlers;
 
 	memcpy(&zend_generator_handlers, &std_object_handlers, sizeof(zend_object_handlers));
 	zend_generator_handlers.free_obj = zend_generator_free_storage;

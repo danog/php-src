@@ -168,9 +168,8 @@ int fpm_stdio_flush_child(void)
 
 static void fpm_stdio_child_said(struct fpm_event_s *ev, short which, void *arg) /* {{{ */
 {
-	static const int max_buf_size = 1024;
 	int fd = ev->fd;
-	char buf[max_buf_size];
+	char buf[1024];
 	struct fpm_child_s *child;
 	int is_stdout;
 	struct fpm_event_s *event;
@@ -216,7 +215,7 @@ static void fpm_stdio_child_said(struct fpm_event_s *ev, short which, void *arg)
 
 	while (1) {
 stdio_read:
-		in_buf = read(fd, buf, max_buf_size - 1);
+		in_buf = read(fd, buf, sizeof(buf) - 1);
 		if (in_buf <= 0) { /* no data */
 			if (in_buf == 0 || !PHP_IS_TRANSIENT_ERROR(errno)) {
 				/* pipe is closed or error */
@@ -269,7 +268,7 @@ stdio_read:
 			zlog_stream_finish(log_stream);
 		}
 		if (read_fail < 0) {
-			zlog(ZLOG_SYSERROR, "unable to read what child say");
+			zlog(ZLOG_SYSERROR, "unable to read what child %d said into %s", (int) child->pid, is_stdout ? "stdout" : "stderr");
 		}
 
 		fpm_event_del(event);
