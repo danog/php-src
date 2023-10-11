@@ -26,13 +26,14 @@ freebsd_task:
   tests_script:
     - export SKIP_IO_CAPTURE_TESTS=1
     - export CI_NO_IPV6=1
-    - sapi/cli/php run-tests.php -P -q -j2 -g FAIL,XFAIL,BORK,WARN,LEAK,XLEAK,SKIP --offline --show-diff --show-slow 1000 --set-timeout 120 -d zend_extension=opcache.so
+    - export STACK_LIMIT_DEFAULTS_CHECK=1
+    - sapi/cli/php run-tests.php -P -q -j2 -g FAIL,BORK,LEAK,XLEAK --no-progress --offline --show-diff --show-slow 1000 --set-timeout 120 -d zend_extension=opcache.so
 
 arm_task:
   name: ARM_DEBUG_NTS
   only_if: $CIRRUS_CRON == 'nightly' || $CIRRUS_CHANGE_TITLE =~ '.*\[ci arm\].*'
   arm_container:
-    image: debian:11
+    image: debian:12
     additional_containers:
       - name: mysql
         image: mysql:8
@@ -132,7 +133,6 @@ arm_task:
         --enable-exif
         --with-zip
         --with-zlib
-        --with-zlib-dir=/usr
         --enable-soap
         --enable-xmlreader
         --with-xsl
@@ -206,11 +206,12 @@ arm_task:
         sapi/cli/php run-tests.php
         -d zend_extension=opcache.so
         -d opcache.enable_cli=1
-        -d opcache.jit_buffer_size=16M
+        -d opcache.jit_buffer_size=64M
         -d opcache.jit=function
         -d opcache.file_update_protection=0
         -P -q -x -j2
         -g FAIL,BORK,LEAK,XLEAK
+        --no-progress
         --offline
         --show-diff
         --show-slow 1000
@@ -233,6 +234,7 @@ arm_task:
         -d opcache.jit=tracing
         -P -q -x -j2
         -g FAIL,BORK,LEAK,XLEAK
+        --no-progress
         --offline
         --show-diff
         --show-slow 1000

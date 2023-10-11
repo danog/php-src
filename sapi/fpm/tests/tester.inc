@@ -2,7 +2,10 @@
 
 namespace FPM;
 
-use Adoy\FastCGI\Client;
+use FPM\FastCGI\Client;
+use FPM\FastCGI\SocketTransport;
+use FPM\FastCGI\StreamTransport;
+use FPM\FastCGI\Transport;
 
 require_once 'fcgi.inc';
 require_once 'logreader.inc';
@@ -64,6 +67,11 @@ class Tester
      * @var array
      */
     private array $clients = [];
+
+    /**
+     * @var string
+     */
+    private string $clientTransport;
 
     /**
      * @var LogReader
@@ -130,6 +138,16 @@ class Tester
      * @var Response|null
      */
     private ?Response $response;
+
+    /**
+     * @var string[]
+     */
+    private $expectedAccessLogs;
+
+    /**
+     * @var bool
+     */
+    private $expectSuppressableAccessLogEntries;
 
     /**
      * Clean all the created files up
@@ -259,10 +277,11 @@ class Tester
     static public function skipIfConfigFails(string $configTemplate)
     {
         $tester     = new self($configTemplate, '', [], self::getCallerFileName());
-        $testResult = $tester->testConfig();
+        $testResult = $tester->testConfig(true);
         if ($testResult !== null) {
             self::clean(2);
-            die("skip $testResult");
+            $message = $testResult[0] ?? 'Config failed';
+            die("skip $message");
         }
     }
 
@@ -294,7 +313,7 @@ class Tester
      */
     static public function skipIfNotRoot()
     {
-        if (getmyuid() != 0) {
+        if (exec('whoami') !== 'root') {
             die('skip not running as root');
         }
     }
@@ -304,7 +323,7 @@ class Tester
      */
     static public function skipIfRoot()
     {
-        if (getmyuid() == 0) {
+        if (exec('whoami') === 'root') {
             die('skip running as root');
         }
     }
@@ -316,6 +335,42 @@ class Tester
     {
         if ( ! extension_loaded('posix')) {
             die('skip posix extension not loaded');
+        }
+    }
+
+    /**
+     * Skip test if supplied shell command fails.
+     *
+     * @param string $command
+     * @param string|null $expectedPartOfOutput
+     */
+    static public function skipIfShellCommandFails(string $command, string $expectedPartOfOutput = null)
+    {
+        $result = exec("$command 2>&1", $output, $code);
+        if ($result === false || $code) {
+            die("skip command '$command' faieled with code $code");
+        }
+        if (!is_null($expectedPartOfOutput)) {
+            if (is_array($output)) {
+                foreach ($output as $line) {
+                    if (str_contains($line, $expectedPartOfOutput)) {
+                        // string found so no need to skip
+                        return;
+                    }
+                }
+            }
+            die("skip command '$command' did not contain output '$expectedPartOfOutput'");
+        }
+    }
+
+    /**
+     * Skip if posix extension not loaded.
+     */
+    static public function skipIfUserDoesNotExist($userName)
+    {
+        self::skipIfPosixNotLoaded();
+        if (posix_getpwnam($userName) === false) {
+            die("skip user $userName does not exist");
         }
     }
 
@@ -333,15 +388,30 @@ class Tester
         string $code = '',
         array $options = [],
         string $fileName = null,
-        bool $debug = null
+        bool $debug = null,
+        string $clientTransport = 'stream'
     ) {
-        $this->configTemplate = $configTemplate;
-        $this->code           = $code;
-        $this->options        = $options;
-        $this->fileName       = $fileName ?: self::getCallerFileName();
-        $this->debug          = $debug !== null ? $debug : (bool)getenv('TEST_FPM_DEBUG');
-        $this->logReader      = new LogReader($this->debug);
-        $this->logTool        = new LogTool($this->logReader, $this->debug);
+        $this->configTemplate  = $configTemplate;
+        $this->code            = $code;
+        $this->options         = $options;
+        $this->fileName        = $fileName ?: self::getCallerFileName();
+        $this->debug           = $debug !== null ? $debug : (bool)getenv('TEST_FPM_DEBUG');
+        $this->logReader       = new LogReader($this->debug);
+        $this->logTool         = new LogTool($this->logReader, $this->debug);
+        $this->clientTransport = $clientTransport;
+    }
+
+    /**
+     * Creates new client transport.
+     *
+     * @return Transport
+     */
+    private function createTransport()
+    {
+        return match ($this->clientTransport) {
+            'stream' => new StreamTransport(),
+            'socket' => new SocketTransport(),
+        };
     }
 
     /**
@@ -357,20 +427,53 @@ class Tester
     /**
      * Test configuration file.
      *
-     * @return null|string
+     * @return null|array
      * @throws \Exception
      */
-    public function testConfig()
+    public function testConfig($silent = false, array|string|null $expectedPattern = null): ?array
     {
         $configFile = $this->createConfig();
-        $cmd        = self::findExecutable() . ' -t -y ' . $configFile . ' 2>&1';
+        $cmd        = self::findExecutable() . ' -n -tt -y ' . $configFile . ' 2>&1';
         $this->trace('Testing config using command', $cmd, true);
         exec($cmd, $output, $code);
+        $found = 0;
+        if ($expectedPattern !== null) {
+            $expectedPatterns = is_array($expectedPattern) ? $expectedPattern : [$expectedPattern];
+        }
         if ($code) {
-            return preg_replace("/\[.+?\]/", "", $output[0]);
+            $messages = [];
+            foreach ($output as $outputLine) {
+                $message    = preg_replace("/\[.+?\]/", "", $outputLine, 1);
+                if ($expectedPattern !== null) {
+                    for ($i = 0; $i < count($expectedPatterns); $i++) {
+                        $pattern = $expectedPatterns[$i];
+                        if ($pattern !== null && preg_match($pattern, $message)) {
+                            $found++;
+                            $expectedPatterns[$i] = null;
+                        }
+                    }
+                }
+                $messages[] = $message;
+                if ( ! $silent) {
+                    $this->error($message, null, false);
+                }
+            }
+        } else {
+            $messages = null;
         }
 
-        return null;
+        if ($expectedPattern !== null && $found < count($expectedPatterns)) {
+            $missingPatterns = array_filter($expectedPatterns);
+            $errorMessage = sprintf(
+                "The expected config %s %s %s not been found",
+                count($missingPatterns) > 1 ? 'patterns' : 'pattern',
+                implode(', ', $missingPatterns),
+                count($missingPatterns) > 1 ? 'have' : 'has',
+            );
+            $this->error($errorMessage);
+        }
+
+        return $messages;
     }
 
     /**
@@ -395,7 +498,7 @@ class Tester
         $configFile = $this->createConfig();
         $desc       = $this->outDesc ? [] : [1 => array('pipe', 'w'), 2 => array('redirect', 1)];
 
-        $cmd = [self::findExecutable(), '-y', $configFile];
+        $cmd = [self::findExecutable(), '-n', '-y', $configFile];
 
         if ($forceStderr) {
             $cmd[] = '-O';
@@ -702,6 +805,7 @@ class Tester
      * @param string|array|null $stdin          = null
      * @param bool              $expectError
      * @param int               $readLimit
+     * @param int               $writeDelay
      *
      * @return Response
      * @throws \Exception
@@ -719,6 +823,7 @@ class Tester
         string|array $stdin = null,
         bool $expectError = false,
         int $readLimit = -1,
+        int $writeDelay = 0,
     ): Response {
         if ($this->hasError()) {
             return new Response(null, true);
@@ -733,7 +838,7 @@ class Tester
 
         try {
             $this->response = new Response(
-                $this->getClient($address, $connKeepAlive)->request_data($params, $stdin, $readLimit)
+                $this->getClient($address, $connKeepAlive)->request_data($params, $stdin, $readLimit, $writeDelay)
             );
             if ($expectError) {
                 $this->error('Expected request error but the request was successful');
@@ -766,6 +871,7 @@ class Tester
      * @param string|null $errorMessage
      * @param bool        $connKeepAlive
      * @param int         $readTimeout
+     * @param int         $writeDelay
      *
      * @return Response[]
      * @throws \Exception
@@ -776,7 +882,8 @@ class Tester
         string $successMessage = null,
         string $errorMessage = null,
         bool $connKeepAlive = false,
-        int $readTimeout = 0
+        int $readTimeout = 0,
+        int $writeDelay = 0,
     ) {
         if (is_numeric($requests)) {
             $requests = array_fill(0, $requests, []);
@@ -787,7 +894,7 @@ class Tester
         }
 
         try {
-            $connections = array_map(function ($requestData) use ($address, $connKeepAlive) {
+            $connections = array_map(function ($requestData) use ($address, $connKeepAlive, $writeDelay) {
                 $client = $this->getClient($address, $connKeepAlive);
                 $params = $this->getRequestParams(
                     $requestData['query'] ?? '',
@@ -801,7 +908,7 @@ class Tester
 
                 return [
                     'client'    => $client,
-                    'requestId' => $client->async_request($params, false),
+                    'requestId' => $client->async_request($params, false, $writeDelay),
                 ];
             }, $requests);
 
@@ -835,7 +942,7 @@ class Tester
      *
      * @return Client
      */
-    private function getClient(string $address = null, $keepAlive = false): Client
+    private function getClient(string $address = null, bool $keepAlive = false): Client
     {
         $address = $address ? $this->processTemplate($address) : $this->getAddr();
         if ($address[0] === '/') { // uds
@@ -857,11 +964,11 @@ class Tester
         }
 
         if ( ! $keepAlive) {
-            return new Client($host, $port);
+            return new Client($host, $port, $this->createTransport());
         }
 
         if ( ! isset($this->clients[$host][$port])) {
-            $client = new Client($host, $port);
+            $client = new Client($host, $port, $this->createTransport());
             $client->setKeepAlive(true);
             $this->clients[$host][$port] = $client;
         }
@@ -1124,9 +1231,19 @@ class Tester
                 return $address;
             }
 
-            return sys_get_temp_dir() . '/' .
-                   hash('crc32', dirname($address)) . '-' .
-                   basename($address);
+            $addressPart = hash('crc32', dirname($address)) . '-' . basename($address);
+
+            // is longer on Mac, than on Linux
+            $tmpDirAddress = sys_get_temp_dir() . '/' . $addressPart;
+                   ;
+
+            if (strlen($tmpDirAddress) <= 104) {
+                return $tmpDirAddress;
+            }
+
+            $srcRootAddress = dirname(__DIR__, 3) . '/' . $addressPart;
+
+            return $srcRootAddress;
         }
 
         return $this->getHost($type) . ':' . $port;
@@ -1288,6 +1405,7 @@ class Tester
             return $filePath;
         }
         file_put_contents($filePath, $content);
+
         $this->trace('Created file: ' . $filePath, $content, isFile: true);
 
         return $filePath;
@@ -1328,14 +1446,15 @@ class Tester
     /**
      * Display error.
      *
-     * @param string          $msg
-     * @param \Exception|null $exception
+     * @param string          $msg       Error message.
+     * @param \Exception|null $exception If there is an exception, log its message
+     * @param bool            $prefix    Whether to prefix the error message
      *
      * @return false
      */
-    private function error($msg, \Exception $exception = null): bool
+    private function error(string $msg, \Exception $exception = null, bool $prefix = true): bool
     {
-        $this->error = 'ERROR: ' . $msg;
+        $this->error = $prefix ? 'ERROR: ' . $msg : ltrim($msg);
         if ($exception) {
             $this->error .= '; EXCEPTION: ' . $exception->getMessage();
         }
@@ -1835,12 +1954,22 @@ class Tester
      */
     public function expectLogConfigOptions(array $options)
     {
-        foreach ($options as $name => $value) {
-            $this->expectLogNotice("\s+$name\s=\s$value", checkAllLogs: true);
+        foreach ($options as $value) {
+            $confValue = str_replace(
+                ']',
+                '\]',
+                str_replace(
+                    '[',
+                    '\[',
+                    str_replace('/', '\/', $value)
+                )
+            );
+            $this->expectLogNotice("\s+$confValue", checkAllLogs: true);
         }
 
         return true;
     }
+
 
     /**
      * Print content of access log.
@@ -1854,6 +1983,70 @@ class Tester
     }
 
     /**
+     * Return content of access log.
+     *
+     * @return string|false
+     */
+    public function getAccessLog()
+    {
+        $accessLog = $this->getFile('acc.log');
+        if (is_file($accessLog)) {
+            return file_get_contents($accessLog);
+        }
+        return false;
+    }
+
+    /**
+     * Expect a single access log line.
+     *
+     * @param string $LogLine
+     * @param bool $suppressable see expectSuppressableAccessLogEntries
+     */
+    public function expectAccessLog(
+        string $logLine,
+        bool $suppressable = false
+    ) {
+        if (!$suppressable || $this->expectSuppressableAccessLogEntries) {
+            $this->expectedAccessLogs[] = $logLine;
+        }
+    }
+
+    /**
+     * Checks that all access log entries previously listed as expected by
+     * calling "expectAccessLog" are in the access log.
+     */
+    public function checkAccessLog()
+    {
+        if (isset($this->expectedAccessLogs)) {
+            $expectedAccessLog = implode("\n", $this->expectedAccessLogs) . "\n";
+        } else {
+            $this->error("Called checkAccessLog but did not previous call expectAccessLog");
+        }
+        if ($accessLog = $this->getAccessLog()) {
+            if ($expectedAccessLog !== $accessLog) {
+                $this->error(sprintf(
+                    "Access log was not as expected.\nEXPECTED:\n%s\n\nACTUAL:\n%s",
+                    $expectedAccessLog,
+                    $accessLog
+                ));
+            }
+        } else {
+            $this->error("Called checkAccessLog but access log does not exist");
+        }
+    }
+
+    /**
+     * Flags whether the access log check should expect to see suppressable
+     * log entries, i.e. the URL is not in access.suppress_path[] config
+     *
+     * @param bool
+     */
+    public function expectSuppressableAccessLogEntries(bool $expectSuppressableAccessLogEntries)
+    {
+        $this->expectSuppressableAccessLogEntries = $expectSuppressableAccessLogEntries;
+    }
+
+    /*
      * Read all log entries.
      *
      * @param string      $type    The log type
