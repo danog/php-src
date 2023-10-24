@@ -412,7 +412,7 @@ jobs:
           # Needed to avoid overwriting JIT config
           export PSALM_ALLOW_XDEBUG=1
           php /usr/bin/composer install --no-progress --ignore-platform-reqs
-          php $GITHUB_WORKSPACE/.github/jit_check.php ./psalm --no-cache || exit $?
+          php --repeat 2 -f $GITHUB_WORKSPACE/.github/jit_check.php ./psalm -- --no-cache || exit $?
       - name: Test PHPStan
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
