@@ -400,7 +400,7 @@ jobs:
       - name: Test Psalm
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
-          git clone https://github.com/vimeo/psalm --branch=master --depth 1
+          git clone https://github.com/vimeo/psalm --branch=5.x --depth 1
           cd psalm
           git rev-parse HEAD
           export ASAN_OPTIONS=exitcode=139
