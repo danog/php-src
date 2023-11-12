@@ -119,16 +119,17 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     $res = pcntl_wait($status);
     if ($res === -1) {
         printMutex("An error occurred while waiting with waitpid!");
-        $finalStatus = 1;
+        $finalStatus = $finalStatus ?: 1;
         return;
     }
     if (!isset($parentPids[$res])) {
         printMutex("Unknown PID $res returned!");
-        $finalStatus = 1;
+        $finalStatus = $finalStatus ?: 1;
         return;
     }
     unset($parentPids[$res]);
     if ($status !== 0) {
+        printMutex("Child exited with status $status");
         $finalStatus = $status;
     }
 };
@@ -217,9 +218,13 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
             );
         }
     }
+
+    printMutex("$dir: exiting with status $final");
     exit($final);
 }
 
 $waitAll();
+
+printMutex("All done!");
 
 die($finalStatus);
