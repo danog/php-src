@@ -140,6 +140,7 @@ $waitAll = function () use ($waitOne, &$parentPids): void {
     }
 };
 
+printMutex("Cloning repos...");
 
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
@@ -159,6 +160,9 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
 
 $waitAll();
 
+printMutex("Done cloning repos!");
+
+printMutex("Running tests...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
