@@ -17,6 +17,9 @@ runs:
         echo '* soft nofile 1048576' | sudo tee /etc/security/limits.conf
         echo '* hard nofile 1048576' | sudo tee /etc/security/limits.conf
 
+        ulimit -n
+        ulimit -hn
+
         sudo apt-get update -y | true
         sudo apt-get install -y \
           autoconf \
