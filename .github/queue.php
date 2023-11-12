@@ -8,6 +8,7 @@ if ($argv[1] === 'run') {
     $idx = 0;
     foreach ($queue as [$cwd, $cmd]) {
         $cmdStr = implode(" ", $cmd);
+        echo "Starting $cmdStr...".PHP_EOL;
         $p = proc_open($cmd, [
             ["pipe", "r"], 
             ["file", sys_get_temp_dir()."/out_$idx.txt", "a"],
