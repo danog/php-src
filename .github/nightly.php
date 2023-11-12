@@ -114,7 +114,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command]) {
             ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"]
         ], $pipes);
         if ($p === false) {
-            echo "Failure starting $cmdStr".PHP_EOL;
+            printMutex("Failure starting $cmdStr");
             exit(1);
         }
         $pids[$cmdStr] = [$p, sys_get_temp_dir()."/out_{$dir}_$idx.txt"];
