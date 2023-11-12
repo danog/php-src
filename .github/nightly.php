@@ -1,5 +1,9 @@
 <?php
 
+putenv("ASAN_OPTIONS=exitcode=139");
+putenv("SYMFONY_DEPRECATIONS_HELPER=max[total]=999");
+putenv("PHPSECLIB_ALLOW_JIT=1");
+
 function printMutex(string $result): void {
     flock(STDOUT, LOCK_EX);
     fwrite(STDOUT, $result.PHP_EOL);
@@ -129,6 +133,29 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     }
 };
 
+$waitAll = function () use ($waitOne, &$parentPids): void {
+    while ($parentPids) {
+        $waitOne();
+    }
+};
+
+
+foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
+    $pid = pcntl_fork();
+    if ($pid) {
+        $parentPids[$pid] = true;
+        continue;
+    }
+
+    chdir(sys_get_temp_dir());
+    if ($branch) {
+        $branch = "--branch $branch";
+    }
+    e("git clone $repo $branch --depth 1 $dir");
+}
+
+$waitAll();
+
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
@@ -139,12 +166,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
         continue;
     }
 
-    chdir(sys_get_temp_dir());
-    if ($branch) {
-        $branch = "--branch $branch";
-    }
-    e("git clone $repo $branch --depth 1 $dir");
-    chdir($dir);
+    chdir(sys_get_temp_dir()."/$dir");
     $rev = e("git rev-parse HEAD");
     e("composer i --ignore-platform-reqs", $dir);
     if ($prepare) {
@@ -196,8 +218,6 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     exit($final);
 }
 
-while ($parentPids) {
-    $waitOne();
-}
+$waitAll();
 
 die($finalStatus);

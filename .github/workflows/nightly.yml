@@ -387,10 +387,6 @@ jobs:
       - name: Test multiple libraries and frameworks in parallel
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
-          export ASAN_OPTIONS=exitcode=139
-          export SYMFONY_DEPRECATIONS_HELPER=max[total]=999
-          export PHPSECLIB_ALLOW_JIT=1
-
           php $GITHUB_WORKSPACE/.github/nightly.php || exit $?
 
       - name: Test Psalm
