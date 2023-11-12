@@ -150,6 +150,8 @@ jobs:
 
       - name: Test multiple libraries and frameworks in parallel
         run: |
+          sudo prlimit --pid $$ --nofile=1048576:1048576
+
           php $GITHUB_WORKSPACE/.github/nightly.php || exit $?
 
       - name: Test

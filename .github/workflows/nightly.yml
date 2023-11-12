@@ -387,6 +387,8 @@ jobs:
       - name: Test multiple libraries and frameworks in parallel
         if: matrix.branch.ref != 'PHP-8.0'
         run: |
+          sudo prlimit --pid $$ --nofile=1048576:1048576
+          
           php $GITHUB_WORKSPACE/.github/nightly.php || exit $?
 
       - name: Test Psalm
