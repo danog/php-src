@@ -243,7 +243,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
             }
             printMutex(
                 "$dir ($rev): $cmd terminated with status $status:".PHP_EOL
-                .file_get_contents($result).PHP_EOL
+                .file_get_contents($output).PHP_EOL
             );
         }
 
