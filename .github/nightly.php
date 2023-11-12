@@ -18,9 +18,40 @@ function e(string $cmd): string {
 
 $repos = [];
 
+$repos["phpunit"] = [
+    "https://github.com/sebastianbergmann/phpunit.git",
+    "main",
+    null,
+    ["./phpunit"],
+    2
+];
+
+$repos["phpseclib"] = [
+    "https://github.com/phpseclib/phpseclib",
+    "",
+    null,
+    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
+    1
+];
+
+$repos["wordpress"] = [
+    "https://github.com/WordPress/wordpress-develop.git",
+    "",
+    function (): void {
+        $f = file_get_contents('wp-tests-config-sample.php');
+        $f = str_replace('youremptytestdbnamehere', 'test', $f);
+        $f = str_replace('yourusernamehere', 'root', $f);
+        $f = str_replace('yourpasswordhere', 'root', $f);
+        file_put_contents('wp-tests-config.php', $f);
+    },
+    ["vendor/bin/phpunit"],
+    2
+];
+
 foreach (['amp', 'cache', 'dns', 'file', 'http', 'parallel', 'parser', 'pipeline', 'process', 'serialization', 'socket', 'sync', 'websocket-client', 'websocket-server'] as $repo) {
-    $repos["amphp-$repo"] = ["https://github.com/amphp/$repo.git", "", null, ["vendor/bin/phpunit"]];
+    $repos["amphp-$repo"] = ["https://github.com/amphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
 }
+
 $repos["laravel"] = [
     "https://github.com/laravel/framework.git",
     "master",
@@ -29,14 +60,15 @@ $repos["laravel"] = [
         $c = str_replace("public function testSharedGet()", "#[\\PHPUnit\\Framework\\Attributes\\Group('skip')]\n    public function testSharedGet()", $c);
         file_put_contents("tests/Filesystem/FilesystemTest.php", $c);
     },
-    ["vendor/bin/phpunit", "--exclude-group", "skip"]
+    ["vendor/bin/phpunit", "--exclude-group", "skip"],
+    2
 ];
 
 foreach (['async', 'cache', 'child-process', 'datagram', 'dns', 'event-loop', 'promise', 'promise-stream', 'promise-timer', 'stream'] as $repo) {
-    $repos["reactphp-$repo"] = ["https://github.com/reactphp/$repo.git", "", null, ["vendor/bin/phpunit"]];
+    $repos["reactphp-$repo"] = ["https://github.com/reactphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
 }
 
-$repos["revolt"] = ["https://github.com/revoltphp/event-loop.git", "", null, ["vendor/bin/phpunit"]];
+$repos["revolt"] = ["https://github.com/revoltphp/event-loop.git", "", null, ["vendor/bin/phpunit"], 2];
 
 $repos["symfony"] = [
     "https://github.com/symfony/symfony.git",
@@ -69,11 +101,12 @@ $repos["symfony"] = [
                 ];
             }
         }
-    }
+    },
+    2
 ];
 
 $parentPids = [];
-foreach ($repos as $dir => [$repo, $branch, $prepare, $command]) {
+foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
         $parentPids []= $pid;
@@ -102,7 +135,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command]) {
         $cmd = array_merge([
             'php',
             '--repeat',
-            '2',
+            $repeat,
             '-f',
             __DIR__.'/jit_check.php',
         ], $cmd);
