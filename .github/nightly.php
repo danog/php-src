@@ -152,6 +152,8 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
         $branch = "--branch $branch";
     }
     e("git clone $repo $branch --depth 1 $dir");
+    
+    exit(0);
 }
 
 $waitAll();
