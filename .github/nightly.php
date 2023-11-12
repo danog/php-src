@@ -108,11 +108,34 @@ $repos["symfony"] = [
     2
 ];
 
+$finalStatus = 0;
 $parentPids = [];
+
+$waitOne = function () use (&$finalStatus, &$parentPids): void {
+    $res = pcntl_wait($status);
+    if ($res === -1) {
+        printMutex("An error occurred while waiting with waitpid!");
+        $finalStatus = 1;
+        return;
+    }
+    if (!isset($parentPids[$res])) {
+        printMutex("Unknown PID $res returned!");
+        $finalStatus = 1;
+        return;
+    }
+    unset($parentPids[$res]);
+    if ($status !== 0) {
+        $finalStatus = $status;
+    }
+};
+
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids []= $pid;
+        $parentPids[$pid] = true;
+        if (count($parentPids) > $parallel) {
+            $waitOne();
+        }
         continue;
     }
 
@@ -173,14 +196,8 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     exit($final);
 }
 
-$final = 0;
-foreach ($parentPids as $pid) {
-    $status = 0;
-    if (pcntl_waitpid($pid, $status) === -1) {
-        printMutex("An error occurred while waiting with waitpid!");
-    }
-    if ($status !== 0) {
-        $final = $status;
-    }
+while ($parentPids) {
+    $waitOne();
 }
-die($final);
+
+die($finalStatus);
