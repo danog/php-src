@@ -162,7 +162,7 @@ $waitAll();
 
 printMutex("Done cloning repos!");
 
-printMutex("Running tests...");
+printMutex("Running tests (max $parallel processes)...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
