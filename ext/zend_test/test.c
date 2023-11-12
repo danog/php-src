@@ -52,6 +52,7 @@ static zend_class_entry *zend_test_child_class_with_method_with_parameter_attrib
 static zend_class_entry *zend_test_forbid_dynamic_call;
 static zend_class_entry *zend_test_ns_foo_class;
 static zend_class_entry *zend_test_ns_unlikely_compile_error_class;
+static zend_class_entry *zend_test_ns_not_unlikely_compile_error_class;
 static zend_class_entry *zend_test_ns2_foo_class;
 static zend_class_entry *zend_test_ns2_ns_foo_class;
 static zend_class_entry *zend_test_unit_enum;
@@ -500,6 +501,16 @@ static ZEND_FUNCTION(zend_test_crash)
 	php_printf("%s", invalid);
 }
 
+static ZEND_FUNCTION(zend_test_is_pcre_bundled)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+#if HAVE_BUNDLED_PCRE
+	RETURN_TRUE;
+#else
+	RETURN_FALSE;
+#endif
+}
+
 static zend_object *zend_test_class_new(zend_class_entry *class_type)
 {
 	zend_object *obj = zend_objects_new(class_type);
@@ -630,6 +641,13 @@ static ZEND_METHOD(ZendTestNS_Foo, method)
 }
 
 static ZEND_METHOD(ZendTestNS_UnlikelyCompileError, method)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	RETURN_NULL();
+}
+
+static ZEND_METHOD(ZendTestNS_NotUnlikelyCompileError, method)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -818,6 +836,7 @@ PHP_MINIT_FUNCTION(zend_test)
 
 	zend_test_ns_foo_class = register_class_ZendTestNS_Foo();
 	zend_test_ns_unlikely_compile_error_class = register_class_ZendTestNS_UnlikelyCompileError();
+	zend_test_ns_not_unlikely_compile_error_class = register_class_ZendTestNS_NotUnlikelyCompileError();
 	zend_test_ns2_foo_class = register_class_ZendTestNS2_Foo();
 	zend_test_ns2_ns_foo_class = register_class_ZendTestNS2_ZendSubNS_Foo();
 
