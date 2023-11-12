@@ -184,6 +184,8 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     if ($prepare) {
         $prepare();
     }
+
+    exit(0);
 }
 $waitAll();
 
