@@ -400,7 +400,7 @@ jobs:
           export ASAN_OPTIONS=exitcode=139
           export PHPSECLIB_ALLOW_JIT=1
           php /usr/bin/composer install --no-progress --ignore-platform-reqs
-          php $GITHUB_WORKSPACE/.github/patch.php vendor/bin/paratest --verbose --configuration=tests/phpunit.xml --runner=WrapperRunner || exit $?
+          php $GITHUB_WORKSPACE/.github/jit_check.php vendor/bin/paratest --verbose --configuration=tests/phpunit.xml --runner=WrapperRunner || exit $?
 
       - name: Test Psalm
         if: matrix.branch.ref != 'PHP-8.0'
