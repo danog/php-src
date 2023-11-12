@@ -127,9 +127,10 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
         $finalStatus = $finalStatus ?: 1;
         return;
     }
+    $desc = $parentPids[$res];
     unset($parentPids[$res]);
     if ($status !== 0) {
-        printMutex("Child exited with status $status");
+        printMutex("Child $desc exited with status $status");
         $finalStatus = $status;
     }
 };
@@ -145,7 +146,7 @@ printMutex("Cloning repos...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = true;
+        $parentPids[$pid] = "Clone $dir";
         continue;
     }
 
@@ -166,7 +167,7 @@ printMutex("Running tests (max $parallel processes)...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = true;
+        $parentPids[$pid] = "Test $dir";
         if (count($parentPids) >= $parallel) {
             $waitOne();
         }
