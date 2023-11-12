@@ -131,17 +131,17 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     unset($parentPids[$res]);
     if (pcntl_wifexited($status)) {
         $status = pcntl_wexitstatus($status);
-        printMutex("Child $desc exited with status $status");
+        printMutex("Child task $desc exited with status $status");
         if ($status !== 0) {
             $finalStatus = $status;
         }
     } elseif (pcntl_wifstopped($status)) {
         $status = pcntl_wstopsig($status);
-        printMutex("Child $desc stopped by signal $status");
+        printMutex("Child task $desc stopped by signal $status");
         $finalStatus = 1;
     } elseif (pcntl_wifsignaled($status)) {
         $status = pcntl_wtermsig($status);
-        printMutex("Child $desc terminated by signal $status");
+        printMutex("Child task $desc terminated by signal $status");
         $finalStatus = 1;
     }
 };
@@ -157,7 +157,7 @@ printMutex("Cloning repos...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = "Clone $dir";
+        $parentPids[$pid] = "clone $dir";
         continue;
     }
 
@@ -178,7 +178,7 @@ printMutex("Running tests (max $parallel processes)...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = "Test $dir";
+        $parentPids[$pid] = "test $dir";
         if (count($parentPids) >= $parallel) {
             $waitOne();
         }
