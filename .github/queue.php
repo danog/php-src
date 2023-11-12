@@ -22,6 +22,8 @@ if ($argv[1] === 'run') {
         $idx++;
     }
 
+    echo "Waiting for results...".PHP_EOL;
+
     $final = 0;
     foreach ($pids as $cmd => [$p, $idx, $cwd]) {
         $status = proc_close($p);
@@ -33,11 +35,14 @@ if ($argv[1] === 'run') {
             echo file_get_contents(sys_get_temp_dir()."/out_$idx.txt").PHP_EOL;
         }
     }
+    echo "All done!".PHP_EOL;
     exit($final);
 }
 
 $cmd = array_slice($argv, 1);
 $cmd[0] = realpath($cmd[0]);
+array_unshift($cmd, __DIR__.'/jit_check.php');
+array_unshift($cmd, 'php');
 
 $queue []= [getcwd(), $cmd];
 file_put_contents($queueF, json_encode($queue));
