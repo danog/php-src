@@ -30,14 +30,6 @@ $repos["phpunit"] = [
     2
 ];
 
-$repos["phpseclib"] = [
-    "https://github.com/phpseclib/phpseclib",
-    "",
-    null,
-    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
-    1
-];
-
 $repos["wordpress"] = [
     "https://github.com/WordPress/wordpress-develop.git",
     "",
@@ -106,6 +98,14 @@ $repos["symfony"] = [
         }
     },
     2
+];
+
+$repos["phpseclib"] = [
+    "https://github.com/phpseclib/phpseclib",
+    "",
+    null,
+    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
+    1
 ];
 
 $finalStatus = 0;
