@@ -1,5 +1,9 @@
 <?php
 
+putenv("ASAN_OPTIONS=exitcode=139");
+putenv("SYMFONY_DEPRECATIONS_HELPER=max[total]=999");
+putenv("PHPSECLIB_ALLOW_JIT=1");
+
 function printMutex(string $result): void {
     flock(STDOUT, LOCK_EX);
     fwrite(STDOUT, $result.PHP_EOL);
@@ -28,14 +32,6 @@ $repos["phpunit"] = [
     null,
     ["./phpunit"],
     2
-];
-
-$repos["phpseclib"] = [
-    "https://github.com/phpseclib/phpseclib",
-    "",
-    null,
-    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
-    1
 ];
 
 $repos["wordpress"] = [
@@ -108,6 +104,14 @@ $repos["symfony"] = [
     2
 ];
 
+$repos["phpseclib"] = [
+    "https://github.com/phpseclib/phpseclib",
+    "",
+    null,
+    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
+    1
+];
+
 $finalStatus = 0;
 $parentPids = [];
 
@@ -115,27 +119,34 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     $res = pcntl_wait($status);
     if ($res === -1) {
         printMutex("An error occurred while waiting with waitpid!");
-        $finalStatus = 1;
+        $finalStatus = $finalStatus ?: 1;
         return;
     }
     if (!isset($parentPids[$res])) {
         printMutex("Unknown PID $res returned!");
-        $finalStatus = 1;
+        $finalStatus = $finalStatus ?: 1;
         return;
     }
+    $desc = $parentPids[$res];
     unset($parentPids[$res]);
     if ($status !== 0) {
+        printMutex("Child $desc exited with status $status");
         $finalStatus = $status;
     }
 };
 
+$waitAll = function () use ($waitOne, &$parentPids): void {
+    while ($parentPids) {
+        $waitOne();
+    }
+};
+
+printMutex("Cloning repos...");
+
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = true;
-        if (count($parentPids) > $parallel) {
-            $waitOne();
-        }
+        $parentPids[$pid] = "Clone $dir";
         continue;
     }
 
@@ -144,7 +155,26 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
         $branch = "--branch $branch";
     }
     e("git clone $repo $branch --depth 1 $dir");
-    chdir($dir);
+    
+    exit(0);
+}
+
+$waitAll();
+
+printMutex("Done cloning repos!");
+
+printMutex("Running tests (max $parallel processes)...");
+foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
+    $pid = pcntl_fork();
+    if ($pid) {
+        $parentPids[$pid] = "Test $dir";
+        if (count($parentPids) >= $parallel) {
+            $waitOne();
+        }
+        continue;
+    }
+
+    chdir(sys_get_temp_dir()."/$dir");
     $rev = e("git rev-parse HEAD");
     e("composer i --ignore-platform-reqs", $dir);
     if ($prepare) {
@@ -171,7 +201,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
             ["pipe", "r"], 
             ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"],
             ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"]
-        ], $pipes);
+        ], $pipes, sys_get_temp_dir()."/$dir");
         if ($p === false) {
             printMutex("Failure starting $cmdStr");
             exit(1);
@@ -193,11 +223,13 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
             );
         }
     }
+
+    printMutex("$dir: exiting with status $final");
     exit($final);
 }
 
-while ($parentPids) {
-    $waitOne();
-}
+$waitAll();
+
+printMutex("All done!");
 
 die($finalStatus);
