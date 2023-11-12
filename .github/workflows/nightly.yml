@@ -415,8 +415,8 @@ jobs:
           cd phpstan-src
           git rev-parse HEAD
           sed -E 's/phpVersion(.*)max[^)]+/phpVersion\1max(89999/g' conf/parametersSchema.neon -i
-          sed -i 's/public const IS/public const int IS/g' vendor/ondrejmirtes/better-reflection/src/Reflection/Adapter/*php
           php /usr/bin/composer install --no-progress --ignore-platform-reqs
+          sed -i 's/public const IS/public const int IS/g' vendor/ondrejmirtes/better-reflection/src/Reflection/Adapter/*php
           export ASAN_OPTIONS=exitcode=139
           php $GITHUB_WORKSPACE/.github/jit_check.php bin/phpstan clear-result-cache
           php $GITHUB_WORKSPACE/.github/jit_check.php bin/phpstan || exit $?
