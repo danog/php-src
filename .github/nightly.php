@@ -129,9 +129,20 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     }
     $desc = $parentPids[$res];
     unset($parentPids[$res]);
-    if ($status !== 0) {
+    if (pcntl_wifexited($status)) {
+        $status = pcntl_wexitstatus($status);
         printMutex("Child $desc exited with status $status");
-        $finalStatus = $status;
+        if ($status !== 0) {
+            $finalStatus = $status;
+        }
+    } elseif (pcntl_wifstopped($status)) {
+        $status = pcntl_wstopsig($status);
+        printMutex("Child $desc stopped by signal $status");
+        $finalStatus = 1;
+    } elseif (pcntl_wifsignaled($status)) {
+        $status = pcntl_wtermsig($status);
+        printMutex("Child $desc terminated by signal $status");
+        $finalStatus = 1;
     }
 };
 
