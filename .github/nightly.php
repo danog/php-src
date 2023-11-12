@@ -166,31 +166,41 @@ $waitAll();
 
 printMutex("Done cloning repos!");
 
-printMutex("Running tests (max $parallel processes)...");
+printMutex("Preparing repos (max $parallel processes)...");
 foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
+    chdir(sys_get_temp_dir()."/$dir");
+    $rev = e("git rev-parse HEAD", $dir);
+
     $pid = pcntl_fork();
     if ($pid) {
-        $parentPids[$pid] = "test $dir";
+        $parentPids[$pid] = "prepare $dir ($rev)";
         if (count($parentPids) >= $parallel) {
             $waitOne();
         }
         continue;
     }
 
-    chdir(sys_get_temp_dir()."/$dir");
-    $rev = e("git rev-parse HEAD");
     e("composer i --ignore-platform-reqs", $dir);
     if ($prepare) {
         $prepare();
     }
+}
+$waitAll();
+
+printMutex("Done preparing repos!");
+
+printMutex("Running tests (max $parallel processes)...");
+foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
+    chdir(sys_get_temp_dir()."/$dir");
+    $rev = e("git rev-parse HEAD", $dir);
+
     if ($command instanceof Closure) {
-        $commands = $command();
+        $commands = iterator_to_array($command());
     } else {
         $commands = [$command];
     }
-    $pids = [];
-    $idx = 0;
-    foreach ($commands as $cmd) {
+
+    foreach ($commands as $idx => $cmd) {
         $cmd = array_merge([
             'php',
             '--repeat',
@@ -200,21 +210,30 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
         ], $cmd);
 
         $cmdStr = implode(" ", $cmd);
+
+        $pid = pcntl_fork();
+        if ($pid) {
+            $parentPids[$pid] = "test $dir ($rev): $cmdStr";
+            if (count($parentPids) >= $parallel) {
+                $waitOne();
+            }
+            continue;
+        }
+
+        $output = sys_get_temp_dir()."/out_{$dir}_$idx.txt";
+        
         $p = proc_open($cmd, [
             ["pipe", "r"], 
-            ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"],
-            ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"]
+            ["file", $output, "a"],
+            ["file", $output, "a"]
         ], $pipes, sys_get_temp_dir()."/$dir");
+
         if ($p === false) {
             printMutex("Failure starting $cmdStr");
             exit(1);
         }
-        $pids[$cmdStr] = [$p, sys_get_temp_dir()."/out_{$dir}_$idx.txt"];
-        $idx++;
-    }
-
-    $final = 0;
-    foreach ($pids as $cmd => [$p, $result]) {
+        
+        $final = 0;
         $status = proc_close($p);
         if ($status !== 0) {
             if ($status > 128) {
@@ -225,10 +244,9 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
                 .file_get_contents($result).PHP_EOL
             );
         }
-    }
 
-    printMutex("$dir: exiting with status $final");
-    exit($final);
+        exit($final);
+    }
 }
 
 $waitAll();
