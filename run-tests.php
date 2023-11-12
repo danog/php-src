@@ -24,7 +24,7 @@
  */
 
 /* Temporary variables while this file is being refactored. */
-/** @var ?JUnit */
+/** @var ?JUnit $junit */
 $junit = null;
 
 /* End temporary variables. */
@@ -166,7 +166,7 @@ function main(): void
     global $context_line_count;
 
     // Temporary for the duration of refactoring
-    /** @var JUnit */
+    /** @var JUnit $junit */
     global $junit;
 
     define('IS_WINDOWS', substr(PHP_OS, 0, 3) == "WIN");
@@ -398,15 +398,13 @@ function main(): void
 
             $is_switch = true;
 
-            if ($repeat) {
-                foreach ($cfgtypes as $type) {
-                    if (strpos($switch, '--' . $type) === 0) {
-                        foreach ($cfgfiles as $file) {
-                            if ($switch == '--' . $type . '-' . $file) {
-                                $cfg[$type][$file] = true;
-                                $is_switch = false;
-                                break;
-                            }
+            foreach ($cfgtypes as $type) {
+                if (strpos($switch, '--' . $type) === 0) {
+                    foreach ($cfgfiles as $file) {
+                        if ($switch == '--' . $type . '-' . $file) {
+                            $cfg[$type][$file] = true;
+                            $is_switch = false;
+                            break;
                         }
                     }
                 }
@@ -467,13 +465,11 @@ function main(): void
                 case 'g':
                     $SHOW_ONLY_GROUPS = explode(",", $argv[++$i]);
                     break;
-                //case 'h'
                 case '--keep-all':
                     foreach ($cfgfiles as $file) {
                         $cfg['keep'][$file] = true;
                     }
                     break;
-                //case 'l'
                 case 'm':
                     $valgrind = new RuntestsValgrind($environment);
                     break;
@@ -522,7 +518,6 @@ function main(): void
                     putenv('NO_INTERACTION=1');
                     $environment['NO_INTERACTION'] = 1;
                     break;
-                //case 'r'
                 case 's':
                     $output_file = $argv[++$i];
                     $just_save_results = true;
@@ -596,7 +591,6 @@ function main(): void
                 case '--bless':
                     $bless = true;
                     break;
-                //case 'w'
                 case '-':
                     // repeat check with full switch
                     $switch = $argv[$i];
@@ -1815,7 +1809,8 @@ function show_file_block(string $file, string $block, ?string $section = null): 
     }
 }
 
-function skip_test(string $tested, string $tested_file, string $shortname, string $reason) {
+function skip_test(string $tested, string $tested_file, string $shortname, string $reason): string
+{
     global $junit;
 
     show_result('SKIP', $tested, $tested_file, "reason: $reason");
@@ -1846,7 +1841,7 @@ function run_test(string $php, $file, array $env): string
     global $show_progress;
 
     // Temporary
-    /** @var JUnit */
+    /** @var JUnit $junit */
     global $junit;
 
     static $skipCache;
@@ -2205,7 +2200,6 @@ TEST $file
             $junit->markTestAs('SKIP', $shortname, $tested, null, $message);
             return 'SKIPPED';
         }
-
 
         if (!strncasecmp('info', $output, 4) && preg_match('/^info\s*(.+)/i', $output, $m)) {
             $info = " (info: $m[1])";
@@ -2937,8 +2931,7 @@ function generate_diff(string $wanted, ?string $wanted_re, string $output): stri
         $regex = '/^' . expectf_to_regex($expected). '$/s';
         return preg_match($regex, $new);
     });
-    $result = $differ->diff($w, $o);
-    return $result;
+    return $differ->diff($w, $o);
 }
 
 function error(string $message): void
@@ -3360,9 +3353,8 @@ class JUnit
         fwrite($this->fp, $xml);
     }
 
-    private function getSuitesXML(string $suite_name = '')
+    private function getSuitesXML(): string
     {
-        // FIXME: $suite_name gets overwritten
         $result = '';
 
         foreach ($this->suites as $suite_name => $suite) {
@@ -3651,30 +3643,14 @@ class SkipCache
 
         return $result;
     }
-
-//    public function __destruct()
-//    {
-//        echo "Skips: {$this->hits} hits, {$this->misses} misses.\n";
-//        echo "Extensions: {$this->extHits} hits, {$this->extMisses} misses.\n";
-//        echo "Cache distribution:\n";
-//
-//        foreach ($this->skips as $php => $cache) {
-//            echo "$php: " . count($cache) . "\n";
-//        }
-//    }
 }
 
 class RuntestsValgrind
 {
-    protected $version = '';
-    protected $header = '';
-    protected $version_3_8_0 = false;
-    protected $tool = null;
-
-    public function getVersion(): string
-    {
-        return $this->version;
-    }
+    protected string $version;
+    protected string $header;
+    protected bool $version_3_8_0;
+    protected string $tool;
 
     public function getHeader(): string
     {
@@ -3687,7 +3663,7 @@ class RuntestsValgrind
         $header = system_with_timeout("valgrind --tool={$this->tool} --version", $environment);
         if (!$header) {
             error("Valgrind returned no version info for {$this->tool}, cannot proceed.\n".
-                  "Please check if Valgrind is installed and the tool is named correctly.");
+                "Please check if Valgrind is installed and the tool is named correctly.");
         }
         $count = 0;
         $version = preg_replace("/valgrind-(\d+)\.(\d+)\.(\d+)([.\w_-]+)?(\s+)/", '$1.$2.$3', $header, 1, $count);
@@ -3746,17 +3722,6 @@ class TestFile
     public function hasSection(string $name): bool
     {
         return isset($this->sections[$name]);
-    }
-
-    public function hasAllSections(string ...$names): bool
-    {
-        foreach ($names as $section) {
-            if (!isset($this->sections[$section])) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public function hasAnySections(string ...$names): bool
@@ -3983,7 +3948,7 @@ final class Differ
     public const OLD = 0;
     public const ADDED = 1;
     public const REMOVED = 2;
-    private $outputBuilder;
+    private DiffOutputBuilder $outputBuilder;
     private $isEqual;
 
     public function __construct(callable $isEqual)
@@ -4045,8 +4010,6 @@ final class Differ
 
         foreach ($end as $token) {
             $diff[] = [$token, self::OLD];
-            $fromLine++;
-            $toLine++;
         }
 
         return $diff;
@@ -4165,7 +4128,6 @@ class DiffOutputBuilder
     {
         global $context_line_count;
         $i = 0;
-        $string = '';
         $number_len = max(3, strlen((string)count($diffs)));
         $line_number_spec = '%0' . $number_len . 'd';
         $buffer = fopen('php://memory', 'r+b');

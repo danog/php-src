@@ -11085,6 +11085,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_FUNC_GET_ARGS_SPEC_CONST_UNUSE
 	ZEND_VM_NEXT_OPCODE();
 }
 
+/* Contrary to what its name indicates, ZEND_COPY_TMP may receive and define references. */
 static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DIV_SPEC_CONST_CV_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	USE_OPLINE
@@ -21782,9 +21783,6 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_post_inc_hel
 		ZVAL_COPY(EX_VAR(opline->result.var), var_ptr);
 
 		increment_function(var_ptr);
-		if (UNEXPECTED(EG(exception))) {
-			HANDLE_EXCEPTION();
-		}
 	} while (0);
 
 	zval_ptr_dtor_nogc(EX_VAR(opline->op1.var));
@@ -21833,9 +21831,6 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_post_dec_hel
 		ZVAL_COPY(EX_VAR(opline->result.var), var_ptr);
 
 		decrement_function(var_ptr);
-		if (UNEXPECTED(EG(exception))) {
-			HANDLE_EXCEPTION();
-		}
 	} while (0);
 
 	zval_ptr_dtor_nogc(EX_VAR(opline->op1.var));
@@ -37189,6 +37184,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_FUNC_GET_ARGS_SPEC_UNUSED_UNUS
 	ZEND_VM_NEXT_OPCODE();
 }
 
+/* Contrary to what its name indicates, ZEND_COPY_TMP may receive and define references. */
 static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_CALLABLE_CONVERT_SPEC_UNUSED_UNUSED_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 {
 	USE_OPLINE
@@ -39149,9 +39145,6 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_post_inc_hel
 		ZVAL_COPY(EX_VAR(opline->result.var), var_ptr);
 
 		increment_function(var_ptr);
-		if (UNEXPECTED(EG(exception))) {
-			HANDLE_EXCEPTION();
-		}
 	} while (0);
 
 	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();
@@ -39199,9 +39192,6 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_post_dec_hel
 		ZVAL_COPY(EX_VAR(opline->result.var), var_ptr);
 
 		decrement_function(var_ptr);
-		if (UNEXPECTED(EG(exception))) {
-			HANDLE_EXCEPTION();
-		}
 	} while (0);
 
 	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();
@@ -53444,14 +53434,14 @@ ZEND_API void execute_ex(zend_execute_data *ex)
 
 #if defined(ZEND_VM_IP_GLOBAL_REG) || defined(ZEND_VM_FP_GLOBAL_REG)
 	struct {
+#ifdef ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE
+		char hybrid_jit_red_zone[ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE];
+#endif
 #ifdef ZEND_VM_IP_GLOBAL_REG
 		const zend_op *orig_opline;
 #endif
 #ifdef ZEND_VM_FP_GLOBAL_REG
 		zend_execute_data *orig_execute_data;
-#ifdef ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE
-		char hybrid_jit_red_zone[ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE];
-#endif
 #endif
 	} vm_stack_data;
 #endif
@@ -56960,6 +56950,16 @@ ZEND_API void execute_ex(zend_execute_data *ex)
 	}
 #endif
 
+#if (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID)
+	/* Force C compiler to store preserved registers to allow JIT using them */
+# if defined(__GNUC__) && defined(__i386__)
+	__asm__ __volatile__ (""::: "ebx");
+# elif defined(__GNUC__) && defined(__x86_64__)
+	__asm__ __volatile__ (""::: "rbx","r12","r13");
+# elif defined(__GNUC__) && defined(__aarch64__)
+	__asm__ __volatile__ (""::: "x19","x20","x21","x22","x23","x24","x25","x26");
+# endif
+#endif
 	LOAD_OPLINE();
 	ZEND_VM_LOOP_INTERRUPT_CHECK();
 

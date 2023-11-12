@@ -2046,14 +2046,14 @@ function gen_executor($f, $skl, $spec, $kind, $executor_name, $initializer_name)
                     } else {
                         out($f,"#if defined(ZEND_VM_IP_GLOBAL_REG) || defined(ZEND_VM_FP_GLOBAL_REG)\n");
                         out($f,$m[1]."struct {\n");
+                        out($f,"#ifdef ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE\n");
+                        out($f,$m[1]."\tchar hybrid_jit_red_zone[ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE];\n");
+                        out($f,"#endif\n");
                         out($f,"#ifdef ZEND_VM_IP_GLOBAL_REG\n");
                         out($f,$m[1]."\tconst zend_op *orig_opline;\n");
                         out($f,"#endif\n");
                         out($f,"#ifdef ZEND_VM_FP_GLOBAL_REG\n");
                         out($f,$m[1]."\tzend_execute_data *orig_execute_data;\n");
-                        out($f,"#ifdef ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE\n");
-                        out($f,$m[1]."\tchar hybrid_jit_red_zone[ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE];\n");
-                        out($f,"#endif\n");
                         out($f,"#endif\n");
                         out($f,$m[1]."} vm_stack_data;\n");
                         out($f,"#endif\n");
@@ -2339,7 +2339,7 @@ function gen_vm_opcodes_header(
     $str .= "\n";
     $str .= "#if (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID) && !defined(__SANITIZE_ADDRESS__)\n";
     $str .= "# if ((defined(i386) && !defined(__PIC__)) || defined(__x86_64__) || defined(_M_X64))\n";
-    $str .= "#  define ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE 16\n";
+    $str .= "#  define ZEND_VM_HYBRID_JIT_RED_ZONE_SIZE 48\n";
     $str .= "# endif\n";
     $str .= "#endif\n";
     $str .= "\n";
@@ -2414,7 +2414,16 @@ function gen_vm($def, $skel) {
             strpos($line,"ZEND_VM_COLD_CONSTCONST_HANDLER(") === 0) {
           // Parsing opcode handler's definition
             if (preg_match(
-                    "/^ZEND_VM_(HOT_|INLINE_|HOT_OBJ_|HOT_SEND_|HOT_NOCONST_|HOT_NOCONSTCONST_|COLD_|COLD_CONST_|COLD_CONSTCONST_)?HANDLER\(\s*([0-9]+)\s*,\s*([A-Z_]+)\s*,\s*([A-Z_|]+)\s*,\s*([A-Z_|]+)\s*(,\s*([A-Z_|]+)\s*)?(,\s*SPEC\(([A-Z_|=,]+)\)\s*)?\)/",
+                    "/^
+                        ZEND_VM_(HOT_|INLINE_|HOT_OBJ_|HOT_SEND_|HOT_NOCONST_|HOT_NOCONSTCONST_|COLD_|COLD_CONST_|COLD_CONSTCONST_)?HANDLER\(
+                            \s*([0-9]+)\s*,
+                            \s*([A-Z_]+)\s*,
+                            \s*([A-Z_|]+)\s*,
+                            \s*([A-Z_|]+)\s*
+                            (,\s*([A-Z_|]+)\s*)?
+                            (,\s*SPEC\(([A-Z_|=,]+)\)\s*)?
+                        \)
+                    $/x",
                     $line,
                     $m) == 0) {
                 die("ERROR ($def:$lineno): Invalid ZEND_VM_HANDLER definition.\n");
@@ -2465,7 +2474,17 @@ function gen_vm($def, $skel) {
                    strpos($line,"ZEND_VM_HOT_OBJ_TYPE_SPEC_HANDLER(") === 0) {
           // Parsing opcode handler's definition
             if (preg_match(
-                    "/^ZEND_VM_(HOT_|INLINE_|HOT_OBJ_|HOT_SEND_|HOT_NOCONST_|HOT_NOCONSTCONST_)?TYPE_SPEC_HANDLER\(\s*([A-Z_|]+)\s*,\s*((?:[^(,]|\([^()]*|(?R)*\))*),\s*([A-Za-z_]+)\s*,\s*([A-Z_|]+)\s*,\s*([A-Z_|]+)\s*(,\s*([A-Z_|]+)\s*)?(,\s*SPEC\(([A-Z_|=,]+)\)\s*)?\)/",
+                    "/^
+                        ZEND_VM_(HOT_|INLINE_|HOT_OBJ_|HOT_SEND_|HOT_NOCONST_|HOT_NOCONSTCONST_)?TYPE_SPEC_HANDLER\(
+                            \s*([A-Z_|]+)\s*,
+                            \s*((?:[^(,]|\([^()]*|(?R)*\))*),
+                            \s*([A-Za-z_]+)\s*,
+                            \s*([A-Z_|]+)\s*,
+                            \s*([A-Z_|]+)\s*
+                            (,\s*([A-Z_|]+)\s*)?
+                            (,\s*SPEC\(([A-Z_|=,]+)\)\s*)?
+                        \)
+                    $/x",
                     $line,
                     $m) == 0) {
                 die("ERROR ($def:$lineno): Invalid ZEND_VM_TYPE_HANDLER_HANDLER definition.\n");
@@ -2513,7 +2532,15 @@ function gen_vm($def, $skel) {
                    strpos($line,"ZEND_VM_HOT_HELPER(") === 0) {
           // Parsing helper's definition
             if (preg_match(
-                    "/^ZEND_VM(_INLINE|_COLD|_HOT)?_HELPER\(\s*([A-Za-z_]+)\s*,\s*([A-Z_|]+)\s*,\s*([A-Z_|]+)\s*(?:,\s*SPEC\(([A-Z_|=,]+)\)\s*)?(?:,\s*([^)]*)\s*)?\)/",
+                    "/^
+                        ZEND_VM(_INLINE|_COLD|_HOT)?_HELPER\(
+                            \s*([A-Za-z_]+)\s*,
+                            \s*([A-Z_|]+)\s*,
+                            \s*([A-Z_|]+)\s*
+                            (?:,\s*SPEC\(([A-Z_|=,]+)\)\s*)?
+                            (?:,\s*([^)]*)\s*)?
+                        \)
+                    $/x",
                     $line,
                     $m) == 0) {
                 die("ERROR ($def:$lineno): Invalid ZEND_VM_HELPER definition.\n");

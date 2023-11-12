@@ -404,7 +404,6 @@ fcntl.h \
 grp.h \
 ieeefp.h \
 langinfo.h \
-linux/filter.h \
 linux/sock_diag.h \
 malloc.h \
 os/signpost.h \
@@ -610,7 +609,6 @@ getgrnam_r \
 getpwuid_r \
 getwd \
 glob \
-inet_ntoa \
 inet_ntop \
 inet_pton \
 localtime_r \
@@ -1622,6 +1620,23 @@ if test "$PHP_UNDEFINED_SANITIZER" = "yes"; then
       CFLAGS="$CFLAGS -fno-sanitize=object-size"
       CXXFLAGS="$CFLAGS -fno-sanitize=object-size"
     ])
+
+    dnl Clang 17 adds stricter function pointer compatibility checks where pointer args cannot be
+    dnl cast to void*. In that case, set -fno-sanitize=function.
+    OLD_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -fno-sanitize-recover=undefined"
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
+void foo(char *string) {}
+int main(void) {
+  void (*f)(void *) = (void (*)(void *))foo;
+  f("foo");
+}
+    ]])],,[ubsan_needs_no_function=yes],)
+    CFLAGS="$OLD_CFLAGS"
+    if test "$ubsan_needs_no_function" = yes; then
+      CFLAGS="$CFLAGS -fno-sanitize=function"
+      CXXFLAGS="$CFLAGS -fno-sanitize=function"
+    fi
   ], [AC_MSG_ERROR([UndefinedBehaviorSanitizer is not available])])
 fi
 
@@ -1699,7 +1714,8 @@ PHP_INSTALL_HEADERS([Zend/Optimizer], [ \
     zend_func_info.h \
     zend_inference.h \
     zend_optimizer.h \
-    zend_ssa.h])
+    zend_ssa.h \
+    zend_worklist.h])
 
 PHP_ADD_SOURCES(TSRM, TSRM.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
 

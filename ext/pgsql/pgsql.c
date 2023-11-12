@@ -362,7 +362,7 @@ static int _rollback_transactions(zval *el)
 	while ((res = PQgetResult(link))) {
 		PQclear(res);
 	}
-	if ((PQprotocolVersion(link) >= 3 && PQtransactionStatus(link) != PQTRANS_IDLE) || PQprotocolVersion(link) < 3) {
+	if (PQtransactionStatus(link) != PQTRANS_IDLE) {
 		int orig = PGG(ignore_notices);
 		PGG(ignore_notices) = 1;
 		res = PQexec(link,"ROLLBACK;");
@@ -614,7 +614,7 @@ static void php_pgsql_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 			}
 			pgsql = (PGconn *) le->ptr;
 			/* consider to use php_version_compare() here */
-			if (PQprotocolVersion(pgsql) >= 3 && zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 7.2) {
+			if (zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 7.2) {
 				pg_result = PQexec(pgsql, "RESET ALL;");
 				PQclear(pg_result);
 			}
@@ -815,31 +815,29 @@ static void php_pgsql_get_link_info(INTERNAL_FUNCTION_PARAMETERS, int entry_type
 		case PHP_PG_HOST:
 			result = PQhost(pgsql);
 			break;
-		case PHP_PG_VERSION:
+		case PHP_PG_VERSION: {
 			array_init(return_value);
+			char *tmp;
 			add_assoc_string(return_value, "client", pgsql_libpq_version);
 			add_assoc_long(return_value, "protocol", PQprotocolVersion(pgsql));
-			if (PQprotocolVersion(pgsql) >= 3) {
-				/* 8.0 or grater supports protorol version 3 */
-				char *tmp;
-				add_assoc_string(return_value, "server", (char*)PQparameterStatus(pgsql, "server_version"));
+			add_assoc_string(return_value, "server", (char*)PQparameterStatus(pgsql, "server_version"));
 
 #define PHP_PQ_COPY_PARAM(_x) tmp = (char*)PQparameterStatus(pgsql, _x); \
 	if(tmp) add_assoc_string(return_value, _x, tmp); \
 	else add_assoc_null(return_value, _x);
 
-				PHP_PQ_COPY_PARAM("server_encoding");
-				PHP_PQ_COPY_PARAM("client_encoding");
-				PHP_PQ_COPY_PARAM("is_superuser");
-				PHP_PQ_COPY_PARAM("session_authorization");
-				PHP_PQ_COPY_PARAM("DateStyle");
-				PHP_PQ_COPY_PARAM("IntervalStyle");
-				PHP_PQ_COPY_PARAM("TimeZone");
-				PHP_PQ_COPY_PARAM("integer_datetimes");
-				PHP_PQ_COPY_PARAM("standard_conforming_strings");
-				PHP_PQ_COPY_PARAM("application_name");
-			}
+			PHP_PQ_COPY_PARAM("server_encoding");
+			PHP_PQ_COPY_PARAM("client_encoding");
+			PHP_PQ_COPY_PARAM("is_superuser");
+			PHP_PQ_COPY_PARAM("session_authorization");
+			PHP_PQ_COPY_PARAM("DateStyle");
+			PHP_PQ_COPY_PARAM("IntervalStyle");
+			PHP_PQ_COPY_PARAM("TimeZone");
+			PHP_PQ_COPY_PARAM("integer_datetimes");
+			PHP_PQ_COPY_PARAM("standard_conforming_strings");
+			PHP_PQ_COPY_PARAM("application_name");
 			return;
+		}
 		EMPTY_SWITCH_DEFAULT_CASE()
 	}
 	if (result) {
@@ -3595,6 +3593,9 @@ PHP_FUNCTION(pg_send_query)
 	char *query;
 	size_t len;
 	PGconn *pgsql;
+#ifdef LIBPQ_HAS_PIPELINING
+	bool is_pipeline_mode;
+#endif
 	int is_non_blocking;
 	int ret;
 
@@ -3606,23 +3607,40 @@ PHP_FUNCTION(pg_send_query)
 	CHECK_PGSQL_LINK(link);
 	pgsql = link->conn;
 
-	is_non_blocking = PQisnonblocking(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+	is_pipeline_mode = (PQpipelineStatus(pgsql) == PQ_PIPELINE_ON);
+	if (is_pipeline_mode) {
+		is_non_blocking = 1;
+	} else {
+#endif
+		is_non_blocking = PQisnonblocking(pgsql);
 
-	if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
-		php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
-		RETURN_FALSE;
-	}
+		if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
+			php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
+			RETURN_FALSE;
+		}
 
-	if (_php_pgsql_link_has_results(pgsql)) {
-		php_error_docref(NULL, E_NOTICE,
-			"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		if (_php_pgsql_link_has_results(pgsql)) {
+			php_error_docref(NULL, E_NOTICE,
+				"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		}
+#ifdef LIBPQ_HAS_PIPELINING
 	}
+#endif
 
 	if (is_non_blocking) {
 		if (!PQsendQuery(pgsql, query)) {
 			RETURN_FALSE;
 		}
-		ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		if (is_pipeline_mode) {
+			ret = 0;
+		} else {
+#endif
+			ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		}
+#endif
 	} else {
 		if (!PQsendQuery(pgsql, query)) {
 			if ((PGG(auto_reset_persistent) & 2) && PQstatus(pgsql) != CONNECTION_OK) {
@@ -3667,6 +3685,9 @@ PHP_FUNCTION(pg_send_query_params)
 	char *query;
 	size_t query_len;
 	PGconn *pgsql;
+#ifdef LIBPQ_HAS_PIPELINING
+	bool is_pipeline_mode;
+#endif
 	int is_non_blocking;
 	int ret;
 
@@ -3678,17 +3699,26 @@ PHP_FUNCTION(pg_send_query_params)
 	CHECK_PGSQL_LINK(link);
 	pgsql = link->conn;
 
-	is_non_blocking = PQisnonblocking(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+	is_pipeline_mode = (PQpipelineStatus(pgsql) == PQ_PIPELINE_ON);
+	if (is_pipeline_mode) {
+		is_non_blocking = 1;
+	} else {
+#endif
+		is_non_blocking = PQisnonblocking(pgsql);
 
-	if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
-		php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
-		RETURN_FALSE;
-	}
+		if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
+			php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
+			RETURN_FALSE;
+		}
 
-	if (_php_pgsql_link_has_results(pgsql)) {
-		php_error_docref(NULL, E_NOTICE,
-			"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		if (_php_pgsql_link_has_results(pgsql)) {
+			php_error_docref(NULL, E_NOTICE,
+				"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		}
+#ifdef LIBPQ_HAS_PIPELINING
 	}
+#endif
 
 	num_params = zend_hash_num_elements(Z_ARRVAL_P(pv_param_arr));
 	if (num_params > 0) {
@@ -3727,7 +3757,15 @@ PHP_FUNCTION(pg_send_query_params)
 	}
 
 	if (is_non_blocking) {
-		ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		if (is_pipeline_mode) {
+			ret = 0;
+		} else {
+#endif
+			ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		}
+#endif
 	} else {
 		/* Wait to finish sending buffer */
 		while ((ret = PQflush(pgsql))) {
@@ -3761,6 +3799,9 @@ PHP_FUNCTION(pg_send_prepare)
 	char *query, *stmtname;
 	size_t stmtname_len, query_len;
 	PGconn *pgsql;
+#ifdef LIBPQ_HAS_PIPELINING
+	bool is_pipeline_mode;
+#endif
 	int is_non_blocking;
 	int ret;
 
@@ -3772,17 +3813,26 @@ PHP_FUNCTION(pg_send_prepare)
 	CHECK_PGSQL_LINK(link);
 	pgsql = link->conn;
 
-	is_non_blocking = PQisnonblocking(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+	is_pipeline_mode = (PQpipelineStatus(pgsql) == PQ_PIPELINE_ON);
+	if (is_pipeline_mode) {
+		is_non_blocking = 1;
+	} else {
+#endif
+		is_non_blocking = PQisnonblocking(pgsql);
 
-	if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
-		php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
-		RETURN_FALSE;
-	}
+		if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
+			php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
+			RETURN_FALSE;
+		}
 
-	if (_php_pgsql_link_has_results(pgsql)) {
-		php_error_docref(NULL, E_NOTICE,
-			"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		if (_php_pgsql_link_has_results(pgsql)) {
+			php_error_docref(NULL, E_NOTICE,
+				"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		}
+#ifdef LIBPQ_HAS_PIPELINING
 	}
+#endif
 
 	if (!PQsendPrepare(pgsql, stmtname, query, 0, NULL)) {
 		if (is_non_blocking) {
@@ -3798,7 +3848,15 @@ PHP_FUNCTION(pg_send_prepare)
 	}
 
 	if (is_non_blocking) {
-		ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		if (is_pipeline_mode) {
+			ret = 0;
+		} else {
+#endif
+			ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		}
+#endif
 	} else {
 		/* Wait to finish sending buffer */
 		while ((ret = PQflush(pgsql))) {
@@ -3834,6 +3892,9 @@ PHP_FUNCTION(pg_send_execute)
 	char *stmtname;
 	size_t stmtname_len;
 	PGconn *pgsql;
+#ifdef LIBPQ_HAS_PIPELINING
+	bool is_pipeline_mode;
+#endif
 	int is_non_blocking;
 	int ret;
 
@@ -3845,17 +3906,26 @@ PHP_FUNCTION(pg_send_execute)
 	CHECK_PGSQL_LINK(link);
 	pgsql = link->conn;
 
-	is_non_blocking = PQisnonblocking(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+	is_pipeline_mode = (PQpipelineStatus(pgsql) == PQ_PIPELINE_ON);
+	if (is_pipeline_mode) {
+		is_non_blocking = 1;
+	} else {
+#endif
+		is_non_blocking = PQisnonblocking(pgsql);
 
-	if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
-		php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
-		RETURN_FALSE;
-	}
+		if (is_non_blocking == 0 && PQsetnonblocking(pgsql, 1) == -1) {
+			php_error_docref(NULL, E_NOTICE, "Cannot set connection to nonblocking mode");
+			RETURN_FALSE;
+		}
 
-	if (_php_pgsql_link_has_results(pgsql)) {
-		php_error_docref(NULL, E_NOTICE,
-			"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		if (_php_pgsql_link_has_results(pgsql)) {
+			php_error_docref(NULL, E_NOTICE,
+				"There are results on this connection. Call pg_get_result() until it returns FALSE");
+		}
+#ifdef LIBPQ_HAS_PIPELINING
 	}
+#endif
 
 	num_params = zend_hash_num_elements(Z_ARRVAL_P(pv_param_arr));
 	if (num_params > 0) {
@@ -3896,7 +3966,15 @@ PHP_FUNCTION(pg_send_execute)
 	}
 
 	if (is_non_blocking) {
-		ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		if (is_pipeline_mode) {
+			ret = 0;
+		} else {
+#endif
+			ret = PQflush(pgsql);
+#ifdef LIBPQ_HAS_PIPELINING
+		}
+#endif
 	} else {
 		/* Wait to finish sending buffer */
 		while ((ret = PQflush(pgsql))) {
@@ -4015,7 +4093,7 @@ PHP_FUNCTION(pg_get_notify)
 		add_index_string(return_value, 0, pgsql_notify->relname);
 		add_index_long(return_value, 1, pgsql_notify->be_pid);
 		/* consider to use php_version_compare() here */
-		if (PQprotocolVersion(pgsql) >= 3 && zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 9.0) {
+		if (zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 9.0) {
 			add_index_string(return_value, 2, pgsql_notify->extra);
 		}
 	}
@@ -4023,7 +4101,7 @@ PHP_FUNCTION(pg_get_notify)
 		add_assoc_string(return_value, "message", pgsql_notify->relname);
 		add_assoc_long(return_value, "pid", pgsql_notify->be_pid);
 		/* consider to use php_version_compare() here */
-		if (PQprotocolVersion(pgsql) >= 3 && zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 9.0) {
+		if (zend_strtod(PQparameterStatus(pgsql, "server_version"), NULL) >= 9.0) {
 			add_assoc_string(return_value, "payload", pgsql_notify->extra);
 		}
 	}
@@ -5899,6 +5977,8 @@ PHP_FUNCTION(pg_enter_pipeline_mode)
 	pgsql_handle = Z_PGSQL_LINK_P(pgsql_link);
 	CHECK_PGSQL_LINK(pgsql_handle);
 
+	PQsetnonblocking(pgsql_handle->conn, 1);
+
 	RETURN_BOOL(PQenterPipelineMode(pgsql_handle->conn));
 }
 
@@ -5914,7 +5994,24 @@ PHP_FUNCTION(pg_exit_pipeline_mode)
 	pgsql_handle = Z_PGSQL_LINK_P(pgsql_link);
 	CHECK_PGSQL_LINK(pgsql_handle);
 
+	PQsetnonblocking(pgsql_handle->conn, 0);
+
 	RETURN_BOOL(PQexitPipelineMode(pgsql_handle->conn));
+}
+
+PHP_FUNCTION(pg_send_flush_request)
+{
+	zval *pgsql_link;
+	pgsql_link_handle *pgsql_handle;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &pgsql_link, pgsql_link_ce) == FAILURE) {
+		RETURN_THROWS();
+	}
+
+	pgsql_handle = Z_PGSQL_LINK_P(pgsql_link);
+	CHECK_PGSQL_LINK(pgsql_handle);
+
+	RETURN_BOOL(PQsendFlushRequest(pgsql_handle->conn));
 }
 
 PHP_FUNCTION(pg_pipeline_sync)
