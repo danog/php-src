@@ -133,7 +133,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     $pid = pcntl_fork();
     if ($pid) {
         $parentPids[$pid] = true;
-        if (count($parentPids) > $parallel) {
+        if (count($parentPids) >= $parallel) {
             $waitOne();
         }
         continue;
@@ -171,7 +171,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
             ["pipe", "r"], 
             ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"],
             ["file", sys_get_temp_dir()."/out_{$dir}_$idx.txt", "a"]
-        ], $pipes);
+        ], $pipes, sys_get_temp_dir()."/$dir");
         if ($p === false) {
             printMutex("Failure starting $cmdStr");
             exit(1);

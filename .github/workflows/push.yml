@@ -123,6 +123,15 @@ jobs:
       - name: Setup
         if: ${{ !matrix.asan }}
         uses: ./.github/actions/setup-x64
+
+      - name: Test multiple libraries and frameworks in parallel
+        run: |
+          export ASAN_OPTIONS=exitcode=139
+          export SYMFONY_DEPRECATIONS_HELPER=max[total]=999
+          export PHPSECLIB_ALLOW_JIT=1
+
+          php $GITHUB_WORKSPACE/.github/nightly.php || exit $?
+
       - name: Test
         if: matrix.asan == false
         uses: ./.github/actions/test-linux
