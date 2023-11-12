@@ -6,15 +6,19 @@ function printMutex(string $result): void {
     flock(STDOUT, LOCK_UN);
 }
 
-function e(string $cmd): string {
+function e(string $cmd, string $extra = ''): string {
     exec("bash -c ".escapeshellarg("$cmd 2>&1"), $result, $code);
     $result = implode("\n", $result);
     if ($code) {
-        printMutex("An error occurred while executing $cmd (status $code): $result");
+        printMutex("An error occurred while executing $cmd (status $code, extra info $extra): $result");
         die(1);
     }
     return $result;
 }
+
+$parallel = (int) ($argv[1] ?? 0);
+$parallel = $parallel ?: ((int)`nproc`);
+$parallel = $parallel ?: 8;
 
 $repos = [];
 
@@ -84,7 +88,6 @@ $repos["symfony"] = [
         $c = file_get_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php"); 
         $c = str_replace("*/\n    public function testCastNonTrailingCharPointer()", "* @group skip\n     */\n    public function testCastNonTrailingCharPointer()", $c);
         file_put_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php", $c);
-        $c = file_get_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php"); $c = str_replace("*/\n    public function testCastNonTrailingCharPointer()", "* @group skip\n     */\n    public function testCastNonTrailingCharPointer()", $c); file_put_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php", $c);
     },
     function (): iterable {
         $it = new RecursiveDirectoryIterator("src/Symfony");
@@ -120,7 +123,7 @@ foreach ($repos as $dir => [$repo, $branch, $prepare, $command, $repeat]) {
     e("git clone $repo $branch --depth 1 $dir");
     chdir($dir);
     $rev = e("git rev-parse HEAD");
-    e("composer i --ignore-platform-reqs");
+    e("composer i --ignore-platform-reqs", $dir);
     if ($prepare) {
         $prepare();
     }
