@@ -22,13 +22,15 @@ if ($argv[1] === 'run') {
         $idx++;
     }
 
-    echo "Waiting for results...".PHP_EOL;
+    echo "Waiting for results...".PHP_EOL.PHP_EOL;
 
     $final = 0;
     foreach ($pids as $cmd => [$p, $idx, $cwd]) {
         $status = proc_close($p);
-        if ($status > 128) {
-            $final = $status;
+        if ($status !== 0) {
+            if ($status > 128) {
+                $final = $status;
+            }
             echo "$cwd: $cmd terminated with status $status".PHP_EOL;
             chdir($cwd);
             echo "git rev-parse HEAD: ".`git rev-parse HEAD`.PHP_EOL;
