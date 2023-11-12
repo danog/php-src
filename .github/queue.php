@@ -6,9 +6,9 @@ $queue = json_decode(file_exists($queueF) ? file_get_contents($queueF) : '[]', t
 if ($argv[1] === 'run') {
     $pids = [];
     $idx = 0;
+    echo "Starting ".count($queue)." commands...".PHP_EOL;
     foreach ($queue as [$cwd, $cmd]) {
         $cmdStr = implode(" ", $cmd);
-        echo "Starting $cmdStr...".PHP_EOL;
         $p = proc_open($cmd, [
             ["pipe", "r"], 
             ["file", sys_get_temp_dir()."/out_$idx.txt", "a"],
