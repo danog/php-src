@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 06ac12255321035a2669fbc5abf2f3fda4c6ad76 */
+ * Stub hash: 1ac529029c01af5d6698f06c7e5f74b7149ea749 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_zend_test_array_return, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -141,8 +141,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_zend_test_override_libxml_global
 ZEND_END_ARG_INFO()
 #endif
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_ZendTestNS2_namespaced_func, 0, 0, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_zend_test_is_pcre_bundled, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
+
+#define arginfo_ZendTestNS2_namespaced_func arginfo_zend_test_is_pcre_bundled
 
 #define arginfo_ZendTestNS2_namespaced_deprecated_func arginfo_zend_test_void_return
 
@@ -150,7 +152,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_ZendTestNS2_namespaced_deprecated_aliased_func arginfo_zend_test_void_return
 
-#define arginfo_ZendTestNS2_ZendSubNS_namespaced_func arginfo_ZendTestNS2_namespaced_func
+#define arginfo_ZendTestNS2_ZendSubNS_namespaced_func arginfo_zend_test_is_pcre_bundled
 
 #define arginfo_ZendTestNS2_ZendSubNS_namespaced_deprecated_func arginfo_zend_test_void_return
 
@@ -179,9 +181,9 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class__ZendTestChildClass_returnsThrowable, 0, 0, Exception, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_ZendAttributeTest_testMethod arginfo_ZendTestNS2_namespaced_func
+#define arginfo_class_ZendAttributeTest_testMethod arginfo_zend_test_is_pcre_bundled
 
-#define arginfo_class__ZendTestTrait_testMethod arginfo_ZendTestNS2_namespaced_func
+#define arginfo_class__ZendTestTrait_testMethod arginfo_zend_test_is_pcre_bundled
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ZendTestParameterAttribute___construct, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, parameter, IS_STRING, 0)
@@ -207,6 +209,9 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ZendTestNS_Foo_method, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_ZendTestNS_UnlikelyCompileError_method, 0, 0, ZendTestNS\\\125nlikelyCompileError, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_ZendTestNS_NotUnlikelyCompileError_method, 0, 0, ZendTestNS\\\116otUnlikelyCompileError, 1)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ZendTestNS2_Foo_method arginfo_zend_test_void_return
@@ -255,6 +260,7 @@ static ZEND_FUNCTION(get_open_basedir);
 #if defined(HAVE_LIBXML) && !defined(PHP_WIN32)
 static ZEND_FUNCTION(zend_test_override_libxml_global_state);
 #endif
+static ZEND_FUNCTION(zend_test_is_pcre_bundled);
 static ZEND_FUNCTION(ZendTestNS2_namespaced_func);
 static ZEND_FUNCTION(ZendTestNS2_namespaced_deprecated_func);
 static ZEND_FUNCTION(ZendTestNS2_ZendSubNS_namespaced_func);
@@ -277,6 +283,7 @@ static ZEND_METHOD(ZendTestForbidDynamicCall, call);
 static ZEND_METHOD(ZendTestForbidDynamicCall, callStatic);
 static ZEND_METHOD(ZendTestNS_Foo, method);
 static ZEND_METHOD(ZendTestNS_UnlikelyCompileError, method);
+static ZEND_METHOD(ZendTestNS_NotUnlikelyCompileError, method);
 static ZEND_METHOD(ZendTestNS2_Foo, method);
 static ZEND_METHOD(ZendTestNS2_ZendSubNS_Foo, method);
 
@@ -325,6 +332,7 @@ static const zend_function_entry ext_functions[] = {
 #if defined(HAVE_LIBXML) && !defined(PHP_WIN32)
 	ZEND_FE(zend_test_override_libxml_global_state, arginfo_zend_test_override_libxml_global_state)
 #endif
+	ZEND_FE(zend_test_is_pcre_bundled, arginfo_zend_test_is_pcre_bundled)
 	ZEND_NS_FALIAS("ZendTestNS2", namespaced_func, ZendTestNS2_namespaced_func, arginfo_ZendTestNS2_namespaced_func)
 	ZEND_NS_DEP_FALIAS("ZendTestNS2", namespaced_deprecated_func, ZendTestNS2_namespaced_deprecated_func, arginfo_ZendTestNS2_namespaced_deprecated_func)
 	ZEND_NS_FALIAS("ZendTestNS2", namespaced_aliased_func, zend_test_void_return, arginfo_ZendTestNS2_namespaced_aliased_func)
@@ -441,6 +449,12 @@ static const zend_function_entry class_ZendTestNS_Foo_methods[] = {
 
 static const zend_function_entry class_ZendTestNS_UnlikelyCompileError_methods[] = {
 	ZEND_ME(ZendTestNS_UnlikelyCompileError, method, arginfo_class_ZendTestNS_UnlikelyCompileError_method, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+
+static const zend_function_entry class_ZendTestNS_NotUnlikelyCompileError_methods[] = {
+	ZEND_ME(ZendTestNS_NotUnlikelyCompileError, method, arginfo_class_ZendTestNS_NotUnlikelyCompileError_method, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -921,6 +935,16 @@ static zend_class_entry *register_class_ZendTestNS_UnlikelyCompileError(void)
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "ZendTestNS", "UnlikelyCompileError", class_ZendTestNS_UnlikelyCompileError_methods);
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_ZendTestNS_NotUnlikelyCompileError(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "ZendTestNS", "NotUnlikelyCompileError", class_ZendTestNS_NotUnlikelyCompileError_methods);
 	class_entry = zend_register_internal_class_ex(&ce, NULL);
 
 	return class_entry;

@@ -239,6 +239,8 @@ namespace {
 #if defined(HAVE_LIBXML) && !defined(PHP_WIN32)
 function zend_test_override_libxml_global_state(): void {}
 #endif
+
+    function zend_test_is_pcre_bundled(): bool {}
 }
 
 namespace ZendTestNS {
@@ -254,6 +256,11 @@ namespace ZendTestNS {
         public function method(): ?UnlikelyCompileError {}
     }
 
+    class NotUnlikelyCompileError {
+        /* This method signature would create a compile error due to the string
+         * "ZendTestNS\NotUnlikelyCompileError" in the generated macro call */
+        public function method(): ?NotUnlikelyCompileError {}
+    }
 }
 
 namespace ZendTestNS2 {

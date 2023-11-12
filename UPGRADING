@@ -282,6 +282,8 @@ PHP 8.3 UPGRADE NOTES
     now returns true on success, previously null was returned.
   . IntlChar::enumCharNames is now returning a boolean.
     Previously it returned null on success and false on failure.
+  . IntlDateFormatter::construct throws an U_ILLEGAL_ARGUMENT_ERROR
+    exception when an invalid locale had been set.
 
 - MBString:
   . mb_strtolower, mb_strtotitle, and mb_convert_case implement conditional
@@ -430,6 +432,7 @@ PHP 8.3 UPGRADE NOTES
     in error messages (with libpq >= 9.6).
   . Added pg_enter_pipeline_mode().
   . Added pg_exit_pipeline_mode().
+  . Added pg_send_flush_request().
   . Added pg_pipeline_sync().
   . Added pg_pipeline_status().
 
