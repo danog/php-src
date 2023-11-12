@@ -104,14 +104,6 @@ $repos["symfony"] = [
     2
 ];
 
-$repos["phpseclib"] = [
-    "https://github.com/phpseclib/phpseclib",
-    "",
-    null,
-    ["vendor/bin/paratest", "--verbose", "--configuration=tests/phpunit.xml", "--runner=WrapperRunner"],
-    1
-];
-
 $finalStatus = 0;
 $parentPids = [];
 
