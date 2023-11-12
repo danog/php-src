@@ -40,7 +40,12 @@ if ($argv[1] === 'run') {
 }
 
 $cmd = array_slice($argv, 1);
-$cmd[0] = realpath($cmd[0]);
+$real = realpath($cmd[0]);
+if ($real === false) {
+    echo "Could not obtain real path for {$cmd[0]}".PHP_EOL;
+    exit(1);
+}
+$cmd[0] = $real;
 array_unshift($cmd, __DIR__.'/jit_check.php');
 array_unshift($cmd, 'php');
 
