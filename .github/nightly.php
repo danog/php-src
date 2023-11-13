@@ -31,7 +31,7 @@ $repos["phpunit"] = [
     "main",
     null,
     ["./phpunit"],
-    2
+    1
 ];
 
 $repos["wordpress"] = [
@@ -45,11 +45,11 @@ $repos["wordpress"] = [
         file_put_contents('wp-tests-config.php', $f);
     },
     ["vendor/bin/phpunit"],
-    2
+    1
 ];
 
 foreach (['amp', 'cache', 'dns', 'file', 'http', 'parallel', 'parser', 'pipeline', 'process', 'serialization', 'socket', 'sync', 'websocket-client', 'websocket-server'] as $repo) {
-    $repos["amphp-$repo"] = ["https://github.com/amphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
+    $repos["amphp-$repo"] = ["https://github.com/amphp/$repo.git", "", null, ["vendor/bin/phpunit"], 1];
 }
 
 $repos["laravel"] = [
@@ -61,11 +61,11 @@ $repos["laravel"] = [
         file_put_contents("tests/Filesystem/FilesystemTest.php", $c);
     },
     ["vendor/bin/phpunit", "--exclude-group", "skip"],
-    2
+    1
 ];
 
 foreach (['async', 'cache', 'child-process', 'datagram', 'dns', 'event-loop', 'promise', 'promise-stream', 'promise-timer', 'stream'] as $repo) {
-    $repos["reactphp-$repo"] = ["https://github.com/reactphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
+    $repos["reactphp-$repo"] = ["https://github.com/reactphp/$repo.git", "", null, ["vendor/bin/phpunit"], 1];
 }
 
 $repos["revolt"] = ["https://github.com/revoltphp/event-loop.git", "", null, ["vendor/bin/phpunit"], 2];
@@ -101,7 +101,7 @@ $repos["symfony"] = [
             }
         }
     },
-    2
+    1
 ];
 
 $finalStatus = 0;
