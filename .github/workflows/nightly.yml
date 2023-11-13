@@ -403,7 +403,6 @@ jobs:
           php $GITHUB_WORKSPACE/.github/jit_check.php vendor/bin/paratest --verbose --configuration=tests/phpunit.xml --runner=WrapperRunner || exit $?
 
       - name: Test Psalm
-        if: matrix.branch.ref != 'PHP-8.0'
         run: |
           git clone https://github.com/vimeo/psalm --depth 1
           cd psalm
@@ -415,7 +414,7 @@ jobs:
           php $GITHUB_WORKSPACE/.github/jit_check.php ./psalm --no-cache || exit $?
 
       - name: Test PHPStan
-        if: matrix.branch.ref != 'PHP-8.0'
+        if: matrix.branch.ref != 'PHP-8.2'
         run: |
           git clone https://github.com/phpstan/phpstan-src --depth 1
           cd phpstan-src
