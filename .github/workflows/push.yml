@@ -20,6 +20,7 @@ on:
       - PHP-8.2
       - PHP-8.3
       - master
+      - test_asan
   pull_request:
     paths-ignore:
       - docs/*
