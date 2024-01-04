@@ -50,7 +50,7 @@ if test "$PHP_OPCACHE" != "no"; then
     ZEND_JIT_SRC="jit/zend_jit.c jit/zend_jit_vm_helpers.c jit/ir/ir.c jit/ir/ir_strtab.c \
 		jit/ir/ir_cfg.c	jit/ir/ir_sccp.c jit/ir/ir_gcm.c jit/ir/ir_ra.c jit/ir/ir_save.c \
 		jit/ir/ir_dump.c jit/ir/ir_gdb.c jit/ir/ir_perf.c jit/ir/ir_check.c \
-		jit/ir/ir_patch.c jit/ir/ir_emit.c"
+		jit/ir/ir_patch.c jit/ir/ir_emit.c jit/ir/ir_emit_llvm.c"
 
     dnl Find out which ABI we are using.
     case $host_alias in

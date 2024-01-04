@@ -1881,7 +1881,7 @@ static int zend_jit_exception_handler_stub(zend_jit_ctx *jit)
 	} else {
 		handler = EG(exception_op)->handler;
 
-		if (GCC_GLOBAL_REGS) {
+		if (!GCC_GLOBAL_REGS) {
 			ir_TAILCALL(IR_VOID, ir_CONST_FUNC(handler));
 		} else {
 			ir_ref ref, if_negative;
@@ -2837,6 +2837,11 @@ static void *zend_jit_ir_compile(ir_ctx *ctx, size_t *size, const char *name)
 	}
 #endif
 
+	/*char buf[256];
+	sprintf(buf, "%s.llvm", name);
+	ir_emit_llvm(ctx, "test", fopen("test.llvm", "w"));
+	*/
+
 	return entry;
 }
 
@@ -3102,7 +3107,7 @@ static void zend_jit_calc_trace_prologue_size(void)
 
 	zend_jit_init_ctx(jit, (zend_jit_vm_kind == ZEND_VM_KIND_CALL) ? 0 : IR_START_BR_TARGET);
 
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		ir_ref ref = ir_PARAM(IR_ADDR, "execute_data", 1);
 		jit_STORE_FP(jit, ref);
 		jit->ctx.flags |= IR_FASTCALL_FUNC;
@@ -3903,7 +3908,7 @@ static void zend_jit_recv_entry(zend_jit_ctx *jit, int b)
 
 	/* Insert a MERGE block with additional ENTRY input between predecessor and this one */
 	ir_ENTRY(ref, bb->start);
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		/* 2 is hardcoded reference to IR_PARAM */
 		ZEND_ASSERT(jit->ctx.ir_base[2].op == IR_PARAM);
 		ZEND_ASSERT(jit->ctx.ir_base[2].op3 == 1);
@@ -3921,7 +3926,7 @@ static void zend_jit_osr_entry(zend_jit_ctx *jit, int b)
 
 	/* Insert a MERGE block with additional ENTRY input between predecessor and this one */
 	ir_ENTRY(ref, bb->start);
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		/* 2 is hardcoded reference to IR_PARAM */
 		ZEND_ASSERT(jit->ctx.ir_base[2].op == IR_PARAM);
 		ZEND_ASSERT(jit->ctx.ir_base[2].op3 == 1);
@@ -3934,7 +3939,7 @@ static void zend_jit_osr_entry(zend_jit_ctx *jit, int b)
 static ir_ref zend_jit_continue_entry(zend_jit_ctx *jit, ir_ref src, unsigned int label)
 {
 	ir_ENTRY(src, label);
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		/* 2 is hardcoded reference to IR_PARAM */
 		ZEND_ASSERT(jit->ctx.ir_base[2].op == IR_PARAM);
 		ZEND_ASSERT(jit->ctx.ir_base[2].op3 == 1);
@@ -10498,7 +10503,7 @@ static int zend_jit_leave_func(zend_jit_ctx         *jit,
 			ir_ref if_slow = ir_IF(ref);
 
 			ir_IF_TRUE_cold(if_slow);
-			if (!GCC_GLOBAL_REGS) {
+			if (GCC_GLOBAL_REGS) {
 				ref = ir_CALL_1(IR_I32, ir_CONST_FC_FUNC(zend_jit_leave_func_helper), jit_FP(jit));
 			} else {
 				ir_CALL(IR_VOID, ir_CONST_FC_FUNC(zend_jit_leave_func_helper));
@@ -10519,7 +10524,7 @@ static int zend_jit_leave_func(zend_jit_ctx         *jit,
 				}
 			}
 
-			if (!GCC_GLOBAL_REGS) {
+			if (GCC_GLOBAL_REGS) {
 				// execute_data = EG(current_execute_data)
 				jit_STORE_FP(jit, ir_LOAD_A(jit_EG(current_execute_data)));
 			}
@@ -15682,7 +15687,7 @@ static int zend_jit_start(zend_jit_ctx *jit, const zend_op_array *op_array, zend
 	}
 	jit->bb_edges = zend_arena_calloc(&CG(arena), count, sizeof(ir_ref));
 
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		ir_ref ref = ir_PARAM(IR_ADDR, "execute_data", 1);
 		jit_STORE_FP(jit, ref);
 		jit->ctx.flags |= IR_FASTCALL_FUNC;
@@ -16080,7 +16085,7 @@ static int zend_jit_trace_handler(zend_jit_ctx *jit, const zend_op_array *op_arr
 		trace++;
 	}
 
-	if (!GCC_GLOBAL_REGS
+	if (GCC_GLOBAL_REGS
 	 && (trace->op != ZEND_JIT_TRACE_END || trace->stop != ZEND_JIT_TRACE_STOP_RETURN)) {
 		if (opline->opcode == ZEND_RETURN ||
 		    opline->opcode == ZEND_RETURN_BY_REF ||
@@ -16246,7 +16251,7 @@ static int zend_jit_trace_start(zend_jit_ctx        *jit,
 	jit->ssa = ssa;
 	jit->name = zend_string_copy(name);
 
-	if (!GCC_GLOBAL_REGS) {
+	if (GCC_GLOBAL_REGS) {
 		if (!parent) {
 			ir_ref ref = ir_PARAM(IR_ADDR, "execute_data", 1);
 			jit_STORE_FP(jit, ref);
