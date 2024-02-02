@@ -363,7 +363,7 @@ void phpdbg_init(char *init_file, size_t init_file_len, bool use_default) /* {{{
 			}
 
 			ZEND_IGNORE_VALUE(asprintf(&init_file, "%s/%s", scan_dir, PHPDBG_INIT_FILENAME));
-			phpdbg_try_file_init(init_file, strlen(init_file), 1);
+			phpdbg_try_file_init(init_file, strlen(init_file), 0);
 			free(init_file);
 			if (i == -1) {
 				break;
@@ -407,6 +407,7 @@ PHPDBG_COMMAND(exec) /* {{{ */
 			if ((res_len != PHPDBG_G(exec_len)) || (memcmp(res, PHPDBG_G(exec), res_len) != SUCCESS)) {
 				if (PHPDBG_G(in_execution)) {
 					if (phpdbg_ask_user_permission("Do you really want to stop execution to set a new execution context?") == FAILURE) {
+						free(res);
 						return FAILURE;
 					}
 				}
@@ -440,6 +441,7 @@ PHPDBG_COMMAND(exec) /* {{{ */
 
 				phpdbg_compile();
 			} else {
+				free(res);
 				phpdbg_notice("Execution context not changed");
 			}
 		} else {

@@ -35,6 +35,7 @@
 #include <libxml/uri.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlsave.h>
+#include <libxml/entities.h>
 #ifdef LIBXML_SCHEMAS_ENABLED
 #include <libxml/relaxng.h>
 #include <libxml/xmlschemas.h>
@@ -206,12 +207,36 @@ static void php_libxml_node_free(xmlNodePtr node)
 			 * dtd is attached to the document. This works around the issue by inspecting the parent directly. */
 			case XML_ENTITY_DECL: {
 				xmlEntityPtr entity = (xmlEntityPtr) node;
-				php_libxml_unlink_entity_decl(entity);
-				if (entity->orig != NULL) {
-					xmlFree((char *) entity->orig);
-					entity->orig = NULL;
+				if (entity->etype != XML_INTERNAL_PREDEFINED_ENTITY) {
+					php_libxml_unlink_entity_decl(entity);
+#if LIBXML_VERSION >= 21200
+					xmlFreeEntity(entity);
+#else
+					if (entity->children != NULL && entity->owner && entity == (xmlEntityPtr) entity->children->parent) {
+						xmlFreeNodeList(entity->children);
+					}
+					xmlDictPtr dict = entity->doc != NULL ? entity->doc->dict : NULL;
+					if (dict == NULL || !xmlDictOwns(dict, entity->name)) {
+						xmlFree((xmlChar *) entity->name);
+					}
+					if (dict == NULL || !xmlDictOwns(dict, entity->ExternalID)) {
+						xmlFree((xmlChar *) entity->ExternalID);
+					}
+					if (dict == NULL || !xmlDictOwns(dict, entity->SystemID)) {
+						xmlFree((xmlChar *) entity->SystemID);
+					}
+					if (dict == NULL || !xmlDictOwns(dict, entity->URI)) {
+						xmlFree((xmlChar *) entity->URI);
+					}
+					if (dict == NULL || !xmlDictOwns(dict, entity->content)) {
+						xmlFree(entity->content);
+					}
+					if (dict == NULL || !xmlDictOwns(dict, entity->orig)) {
+						xmlFree(entity->orig);
+					}
+					xmlFree(entity);
+#endif
 				}
-				xmlFreeNode(node);
 				break;
 			}
 			case XML_NOTATION_NODE: {
@@ -608,7 +633,11 @@ static void _php_libxml_free_error(void *ptr)
 	xmlResetError((xmlErrorPtr) ptr);
 }
 
-static void _php_list_set_error_structure(xmlErrorPtr error, const char *msg)
+#if LIBXML_VERSION >= 21200
+static void _php_list_set_error_structure(const xmlError *error, const char *msg)
+#else
+static void _php_list_set_error_structure(xmlError *error, const char *msg)
+#endif
 {
 	xmlError error_copy;
 	int ret;
@@ -839,7 +868,11 @@ PHP_LIBXML_API void php_libxml_ctx_warning(void *ctx, const char *msg, ...)
 	va_end(args);
 }
 
-static void php_libxml_structured_error_handler(void *userData, xmlErrorPtr error)
+#if LIBXML_VERSION >= 21200
+void php_libxml_structured_error_handler(void *userData, const xmlError *error)
+#else
+void php_libxml_structured_error_handler(void *userData, xmlErrorPtr error)
+#endif
 {
 	_php_list_set_error_structure(error, NULL);
 
@@ -1071,11 +1104,9 @@ PHP_FUNCTION(libxml_use_internal_errors)
 /* {{{ Retrieve last error from libxml */
 PHP_FUNCTION(libxml_get_last_error)
 {
-	xmlErrorPtr error;
-
 	ZEND_PARSE_PARAMETERS_NONE();
 
-	error = xmlGetLastError();
+	const xmlError *error = xmlGetLastError();
 
 	if (error) {
 		object_init_ex(return_value, libxmlerror_class_entry);
@@ -1378,6 +1409,15 @@ PHP_LIBXML_API void php_libxml_node_free_resource(xmlNodePtr node)
 	switch (node->type) {
 		case XML_DOCUMENT_NODE:
 		case XML_HTML_DOCUMENT_NODE:
+			break;
+		case XML_ENTITY_REF_NODE:
+			/* Entity reference nodes are special: their children point to entity declarations,
+			 * but they don't own the declarations and therefore shouldn't free the children.
+			 * Moreover, there can be more than one reference node for a single entity declarations. */
+			php_libxml_unregister_node(node);
+			if (node->parent == NULL) {
+				php_libxml_node_free(node);
+			}
 			break;
 		default:
 			if (node->parent == NULL || node->type == XML_NAMESPACE_DECL) {
