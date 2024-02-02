@@ -61,7 +61,7 @@
 #include <openssl/param_build.h>
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(OPENSSL_NO_ENGINE)
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)) && !defined(OPENSSL_NO_ENGINE)
 #include <openssl/engine.h>
 #endif
 
@@ -3154,6 +3154,7 @@ PHP_FUNCTION(openssl_csr_sign)
 	X509 *cert = NULL, *new_cert = NULL;
 	EVP_PKEY * key = NULL, *priv_key = NULL;
 	int i;
+	bool new_cert_used = false;
 	struct php_x509_request req;
 
 	ZEND_PARSE_PARAMETERS_START(4, 6)
@@ -3275,11 +3276,12 @@ PHP_FUNCTION(openssl_csr_sign)
 	object_init_ex(return_value, php_openssl_certificate_ce);
 	cert_object = Z_OPENSSL_CERTIFICATE_P(return_value);
 	cert_object->x509 = new_cert;
+	new_cert_used = true;
 
 cleanup:
 
-	if (cert == new_cert) {
-		cert = NULL;
+	if (!new_cert_used && new_cert) {
+		X509_free(new_cert);
 	}
 
 	PHP_SSL_REQ_DISPOSE(&req);
@@ -3288,7 +3290,7 @@ cleanup:
 	if (csr_str) {
 		X509_REQ_free(csr);
 	}
-	if (cert_str && cert) {
+	if (cert_str && cert && cert != new_cert) {
 		X509_free(cert);
 	}
 }
@@ -5266,7 +5268,7 @@ PHP_FUNCTION(openssl_pkcs7_verify)
 					signersfilename, signersfilename_len, 3, PHP_OPENSSL_BIO_MODE_W(PKCS7_BINARY));
 			if (certout) {
 				int i;
-				signers = PKCS7_get0_signers(p7, NULL, (int)flags);
+				signers = PKCS7_get0_signers(p7, others, (int)flags);
 				if (signers != NULL) {
 
 					for (i = 0; i < sk_X509_num(signers); i++) {

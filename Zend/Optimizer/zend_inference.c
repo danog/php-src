@@ -2825,8 +2825,15 @@ static zend_always_inline zend_result _zend_update_type_info(
 							/* DOUBLE may be auto-converted to LONG */
 							tmp |= MAY_BE_LONG;
 							tmp &= ~MAY_BE_DOUBLE;
+						} else if ((t1 & (MAY_BE_LONG|MAY_BE_DOUBLE|MAY_BE_STRING)) == MAY_BE_STRING
+						 && (tmp & (MAY_BE_LONG|MAY_BE_DOUBLE))) {
+							/* LONG/DOUBLE may be auto-converted to STRING */
+							tmp |= MAY_BE_STRING;
+							tmp &= ~(MAY_BE_LONG|MAY_BE_DOUBLE);
 						}
 						tmp &= t1;
+					} else {
+						tmp |= MAY_BE_LONG | MAY_BE_STRING;
 					}
 				} else if (opline->opcode == ZEND_ASSIGN_STATIC_PROP_OP) {
 					/* The return value must also satisfy the property type */
@@ -2837,8 +2844,15 @@ static zend_always_inline zend_result _zend_update_type_info(
 							/* DOUBLE may be auto-converted to LONG */
 							tmp |= MAY_BE_LONG;
 							tmp &= ~MAY_BE_DOUBLE;
+						} else if ((t1 & (MAY_BE_LONG|MAY_BE_DOUBLE|MAY_BE_STRING)) == MAY_BE_STRING
+						 && (tmp & (MAY_BE_LONG|MAY_BE_DOUBLE))) {
+							/* LONG/DOUBLE may be auto-converted to STRING */
+							tmp |= MAY_BE_STRING;
+							tmp &= ~(MAY_BE_LONG|MAY_BE_DOUBLE);
 						}
 						tmp &= t1;
+					} else {
+						tmp |= MAY_BE_LONG | MAY_BE_STRING;
 					}
 				} else {
 					if (tmp & MAY_BE_REF) {
@@ -3673,7 +3687,8 @@ static zend_always_inline zend_result _zend_update_type_info(
 						tmp &= ~MAY_BE_ARRAY_EMPTY;
 					}
 				}
-				if (((tmp & MAY_BE_ARRAY) && (tmp & MAY_BE_ARRAY_KEY_ANY))
+				if (!(tmp & MAY_BE_ARRAY)
+				 || (tmp & MAY_BE_ARRAY_KEY_ANY)
 				 || opline->opcode == ZEND_FETCH_DIM_FUNC_ARG
 				 || opline->opcode == ZEND_FETCH_DIM_R
 				 || opline->opcode == ZEND_FETCH_DIM_IS
@@ -3682,9 +3697,7 @@ static zend_always_inline zend_result _zend_update_type_info(
 					UPDATE_SSA_TYPE(tmp, ssa_op->op1_def);
 				} else {
 					/* invalid key type */
-					tmp = (tmp & (MAY_BE_RC1|MAY_BE_RCN|MAY_BE_ARRAY)) |
-						(t1 & ~(MAY_BE_RC1|MAY_BE_RCN|MAY_BE_UNDEF|MAY_BE_NULL|MAY_BE_FALSE));
-					UPDATE_SSA_TYPE(tmp, ssa_op->op1_def);
+					return SUCCESS;
 				}
 				COPY_SSA_OBJ_TYPE(ssa_op->op1_use, ssa_op->op1_def);
 			}
@@ -5114,9 +5127,9 @@ ZEND_API bool zend_may_throw_ex(const zend_op *opline, const zend_ssa_op *ssa_op
 		case ZEND_FETCH_IS:
 			return (t2 & (MAY_BE_ARRAY|MAY_BE_OBJECT));
 		case ZEND_ISSET_ISEMPTY_DIM_OBJ:
-			return (t1 & MAY_BE_OBJECT) || (t2 & (MAY_BE_ARRAY|MAY_BE_OBJECT));
+			return (t1 & MAY_BE_OBJECT) || (t2 & (MAY_BE_DOUBLE|MAY_BE_ARRAY|MAY_BE_OBJECT));
 		case ZEND_FETCH_DIM_IS:
-			return (t1 & MAY_BE_OBJECT) || (t2 & (MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE));
+			return (t1 & MAY_BE_OBJECT) || (t2 & (MAY_BE_DOUBLE|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE));
 		case ZEND_CAST:
 			switch (opline->extended_value) {
 				case IS_LONG:

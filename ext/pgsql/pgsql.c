@@ -314,8 +314,14 @@ static void _close_pgsql_plink(zend_resource *rsrc)
 		PQclear(res);
 	}
 	PQfinish(link);
-	PGG(num_persistent)--;
-	PGG(num_links)--;
+	/* See https://github.com/php/php-src/issues/12974 why we need to check the if */
+#ifdef ZTS
+	if (pgsql_module_entry.module_started)
+#endif
+	{
+		PGG(num_persistent)--;
+		PGG(num_links)--;
+	}
 	rsrc->ptr = NULL;
 }
 
@@ -405,7 +411,7 @@ PHP_INI_BEGIN()
 STD_PHP_INI_BOOLEAN( "pgsql.allow_persistent",      "1",  PHP_INI_SYSTEM, OnUpdateBool, allow_persistent,      zend_pgsql_globals, pgsql_globals)
 STD_PHP_INI_ENTRY_EX("pgsql.max_persistent",       "-1",  PHP_INI_SYSTEM, OnUpdateLong, max_persistent,        zend_pgsql_globals, pgsql_globals, display_link_numbers)
 STD_PHP_INI_ENTRY_EX("pgsql.max_links",            "-1",  PHP_INI_SYSTEM, OnUpdateLong, max_links,             zend_pgsql_globals, pgsql_globals, display_link_numbers)
-STD_PHP_INI_BOOLEAN( "pgsql.auto_reset_persistent", "0",  PHP_INI_SYSTEM, OnUpdateBool, auto_reset_persistent, zend_pgsql_globals, pgsql_globals)
+STD_PHP_INI_BOOLEAN( "pgsql.auto_reset_persistent", "0",  PHP_INI_SYSTEM, OnUpdateLong, auto_reset_persistent, zend_pgsql_globals, pgsql_globals)
 STD_PHP_INI_BOOLEAN( "pgsql.ignore_notice",         "0",  PHP_INI_ALL,    OnUpdateBool, ignore_notices,        zend_pgsql_globals, pgsql_globals)
 STD_PHP_INI_BOOLEAN( "pgsql.log_notice",            "0",  PHP_INI_ALL,    OnUpdateBool, log_notices,           zend_pgsql_globals, pgsql_globals)
 PHP_INI_END()
@@ -2186,7 +2192,7 @@ PHP_FUNCTION(pg_untrace)
 	PGconn *pgsql;
 	pgsql_link_handle *link;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|r!", &pgsql_link) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|O!", &pgsql_link, pgsql_link_ce) == FAILURE) {
 		RETURN_THROWS();
 	}
 

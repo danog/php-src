@@ -1350,19 +1350,25 @@ static ZEND_COLD void php_error_cb(int orig_type, zend_string *error_filename, c
 						php_printf("%s<br />\n<b>%s</b>:  %s in <b>%s</b> on line <b>%" PRIu32 "</b><br />\n%s", STR_PRINT(prepend_string), error_type_str, ZSTR_VAL(buf), ZSTR_VAL(error_filename), error_lineno, STR_PRINT(append_string));
 						zend_string_free(buf);
 					} else {
-						php_printf("%s<br />\n<b>%s</b>:  %s in <b>%s</b> on line <b>%" PRIu32 "</b><br />\n%s", STR_PRINT(prepend_string), error_type_str, ZSTR_VAL(message), ZSTR_VAL(error_filename), error_lineno, STR_PRINT(append_string));
+						zval tmp;
+						ZVAL_STR(&tmp, message);
+						php_printf_unchecked("%s<br />\n<b>%s</b>:  %Z in <b>%s</b> on line <b>%" PRIu32 "</b><br />\n%s", STR_PRINT(prepend_string), error_type_str, &tmp, ZSTR_VAL(error_filename), error_lineno, STR_PRINT(append_string));
 					}
 				} else {
 					/* Write CLI/CGI errors to stderr if display_errors = "stderr" */
 					if ((!strcmp(sapi_module.name, "cli") || !strcmp(sapi_module.name, "cgi") || !strcmp(sapi_module.name, "phpdbg")) &&
 						PG(display_errors) == PHP_DISPLAY_ERRORS_STDERR
 					) {
-						fprintf(stderr, "%s: %s in %s on line %" PRIu32 "\n", error_type_str, ZSTR_VAL(message), ZSTR_VAL(error_filename), error_lineno);
+						fprintf(stderr, "%s: ", error_type_str);
+						fwrite(ZSTR_VAL(message), sizeof(char), ZSTR_LEN(message), stderr);
+						fprintf(stderr, " in %s on line %" PRIu32 "\n", ZSTR_VAL(error_filename), error_lineno);
 #ifdef PHP_WIN32
 						fflush(stderr);
 #endif
 					} else {
-						php_printf("%s\n%s: %s in %s on line %" PRIu32 "\n%s", STR_PRINT(prepend_string), error_type_str, ZSTR_VAL(message), ZSTR_VAL(error_filename), error_lineno, STR_PRINT(append_string));
+						zval tmp;
+						ZVAL_STR(&tmp, message);
+						php_printf_unchecked("%s\n%s: %Z in %s on line %" PRIu32 "\n%s", STR_PRINT(prepend_string), error_type_str, &tmp, ZSTR_VAL(error_filename), error_lineno, STR_PRINT(append_string));
 					}
 				}
 			}
@@ -1600,15 +1606,24 @@ static void php_free_request_globals(void)
 static ZEND_COLD void php_message_handler_for_zend(zend_long message, const void *data)
 {
 	switch (message) {
-		case ZMSG_FAILED_INCLUDE_FOPEN:
-			php_error_docref("function.include", E_WARNING, "Failed opening '%s' for inclusion (include_path='%s')", php_strip_url_passwd((char *) data), STR_PRINT(PG(include_path)));
+		case ZMSG_FAILED_INCLUDE_FOPEN: {
+			char *tmp = estrdup((char *) data);
+			php_error_docref("function.include", E_WARNING, "Failed opening '%s' for inclusion (include_path='%s')", php_strip_url_passwd(tmp), STR_PRINT(PG(include_path)));
+			efree(tmp);
 			break;
-		case ZMSG_FAILED_REQUIRE_FOPEN:
-			zend_throw_error(NULL, "Failed opening required '%s' (include_path='%s')", php_strip_url_passwd((char *) data), STR_PRINT(PG(include_path)));
+		}
+		case ZMSG_FAILED_REQUIRE_FOPEN: {
+			char *tmp = estrdup((char *) data);
+			zend_throw_error(NULL, "Failed opening required '%s' (include_path='%s')", php_strip_url_passwd(tmp), STR_PRINT(PG(include_path)));
+			efree(tmp);
 			break;
-		case ZMSG_FAILED_HIGHLIGHT_FOPEN:
-			php_error_docref(NULL, E_WARNING, "Failed opening '%s' for highlighting", php_strip_url_passwd((char *) data));
+		}
+		case ZMSG_FAILED_HIGHLIGHT_FOPEN: {
+			char *tmp = estrdup((char *) data);
+			php_error_docref(NULL, E_WARNING, "Failed opening '%s' for highlighting", php_strip_url_passwd(tmp));
+			efree(tmp);
 			break;
+		}
 		case ZMSG_MEMORY_LEAK_DETECTED:
 		case ZMSG_MEMORY_LEAK_REPEATED:
 #if ZEND_DEBUG
