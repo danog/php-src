@@ -36,7 +36,7 @@ $repos["psalm"] = [
         foreach(new RecursiveIteratorIterator($it) as $file) {
             if ($file->getExtension() == 'php' && ctype_upper($file->getBasename()[0])) {
                 yield [
-                    getcwd()."/phpunit",
+                    getcwd()."/vendor/bin/phpunit",
                     dirname($file->getRealPath()), 
                 ];
             }
