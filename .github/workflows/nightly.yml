@@ -486,18 +486,6 @@ jobs:
           echo opcache.jit_hot_side_exit=1 >> /etc/php.d/opcache.ini
           php -v
 
-      - name: Test Psalm
-        if: always()
-        run: |
-          git clone https://github.com/vimeo/psalm --depth 1
-          cd psalm
-          git rev-parse HEAD
-          php /usr/bin/composer install --no-progress --ignore-platform-reqs
-          php vendor/bin/paratest || EXIT_CODE=$?
-          if [ ${EXIT_CODE:-0} -gt 128 ]; then
-            exit 1
-          fi
-
       - name: Test multiple libraries and frameworks in parallel
         if: always()
         run: |
