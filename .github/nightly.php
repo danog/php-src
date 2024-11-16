@@ -37,12 +37,12 @@ $repos["psalm"] = [
             if ($file->getExtension() == 'php' && ctype_upper($file->getBasename()[0])) {
                 yield [
                     getcwd()."/vendor/bin/phpunit",
-                    dirname($file->getRealPath()), 
+                    $file->getRealPath(), 
                 ];
             }
         }
     },
-    1
+    2
 ];
 
 $finalStatus = 0;
