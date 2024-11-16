@@ -26,22 +26,34 @@ $parallel = $parallel ?: 8;
 
 $repos = [];
 
-$repos["phpunit"] = [
+/*$repos["phpunit"] = [
     "https://github.com/sebastianbergmann/phpunit.git",
     "main",
     null,
     ["./phpunit"],
     1
-];
+];*/
 
-$repos["infection"] = [
-    "https://github.com/infection/infection",
+$repos["psalm"] = [
+    "https://github.com/vimeo/psalm",
     "master",
     null,
-    ["vendor/bin/phpunit"],
+    function (): iterable {
+        $it = new RecursiveDirectoryIterator("tests");
+        /** @var SplFileInfo $file */
+        foreach(new RecursiveIteratorIterator($it) as $file) {
+            if ($file->getExtension() == 'php' && ctype_upper($file->getBasename()[0])) {
+                yield [
+                    getcwd()."/phpunit",
+                    dirname($file->getRealPath()), 
+                ];
+            }
+        }
+    },
     1
 ];
 
+/*
 $repos["wordpress"] = [
     "https://github.com/WordPress/wordpress-develop.git",
     "",
@@ -110,7 +122,7 @@ $repos["symfony"] = [
         }
     },
     1
-];
+];*/
 
 $finalStatus = 0;
 $parentPids = [];
