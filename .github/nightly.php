@@ -64,8 +64,8 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     unset($parentPids[$res]);
     if (pcntl_wifexited($status)) {
         $status = pcntl_wexitstatus($status);
-        printMutex("Child task $desc exited with status $status");
         if ($status !== 0) {
+            printMutex("Child task $desc exited with status $status");
             $finalStatus = $status;
         }
     } elseif (pcntl_wifstopped($status)) {
