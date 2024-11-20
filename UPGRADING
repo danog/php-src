@@ -129,6 +129,9 @@ PHP 8.5 UPGRADE NOTES
 10. New Global Constants
 ========================================
 
+- Core:
+  . PHP_BUILD_DATE.
+
 - POSIX:
   . POSIX_SC_OPEN_MAX.
 
@@ -146,6 +149,11 @@ PHP 8.5 UPGRADE NOTES
 * The configuration variables PHP_VERSION, PHP_MINOR_VERSION, and
   PHP_RELEASE_VERSION are now always numbers.  Previously, they have been
   strings for buildconf builds.
+
+* COM:
+  . The extension is now build shared by default; previously it defaulted to a
+    static extension, although the official Windows binaries built a shared
+    extension.
 
 * FFI:
   . It is no longer necessary to specify the library when using FFI::cdef()
