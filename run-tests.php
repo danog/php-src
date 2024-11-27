@@ -26,7 +26,7 @@
 /* Let there be no top-level code beyond this point:
  * Only functions and classes, thanks!
  *
- * Minimum required PHP version: 7.4.0
+ * Minimum required PHP version: 8.0.0
  */
 
 function show_usage(): void
@@ -694,7 +694,6 @@ function main(): void
     if ($test_cnt) {
         putenv('NO_INTERACTION=1');
         usort($test_files, "test_sort");
-        $start_timestamp = time();
         $start_time = hrtime(true);
 
         echo "Running selected tests.\n";
