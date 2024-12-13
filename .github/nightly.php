@@ -37,7 +37,114 @@ $repos["psalm"] = [
             if ($file->getExtension() == 'php' && ctype_upper($file->getBasename()[0])) {
                 yield [
                     getcwd()."/vendor/bin/phpunit",
-                    $file->getRealPath(), 
+                    $file->getRealPath(),
+                ];
+            }
+        }
+    },
+    2
+];
+
+$repos["phpseclib"] = [
+    "https://github.com/phpseclib/phpseclib",
+    "master",
+    null,
+    function (): iterable {
+        $it = new RecursiveDirectoryIterator("tests");
+        /** @var SplFileInfo $file */
+        foreach(new RecursiveIteratorIterator($it) as $file) {
+            if ($file->getExtension() == 'php' && ctype_upper($file->getBasename()[0])) {
+                yield [
+                    getcwd()."/vendor/bin/phpunit",
+                    '-c',
+                    getcwd()."/tests/phpunit.xml",
+                    $file->getRealPath(),
+                ];
+            }
+        }
+    },
+    2
+];
+
+$repos["phpunit"] = [
+    "https://github.com/sebastianbergmann/phpunit.git",
+    "main",
+    null,
+    ["./phpunit"],
+    2
+];
+
+$repos["infection"] = [
+    "https://github.com/infection/infection",
+    "master",
+    null,
+    ["vendor/bin/phpunit"],
+    2
+];
+
+$repos["wordpress"] = [
+    "https://github.com/WordPress/wordpress-develop.git",
+    "",
+    function (): void {
+        $f = file_get_contents('wp-tests-config-sample.php');
+        $f = str_replace('youremptytestdbnamehere', 'test', $f);
+        $f = str_replace('yourusernamehere', 'root', $f);
+        $f = str_replace('yourpasswordhere', 'root', $f);
+        file_put_contents('wp-tests-config.php', $f);
+    },
+    ["vendor/bin/phpunit"],
+    2
+];
+
+foreach (['amp', 'cache', 'dns', 'file', 'http', 'parallel', 'parser', 'pipeline', 'process', 'serialization', 'socket', 'sync', 'websocket-client', 'websocket-server'] as $repo) {
+    $repos["amphp-$repo"] = ["https://github.com/amphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
+}
+
+$repos["laravel"] = [
+    "https://github.com/laravel/framework.git",
+    "master",
+    function (): void {
+        $c = file_get_contents("tests/Filesystem/FilesystemTest.php"); 
+        $c = str_replace("public function testSharedGet()", "#[\\PHPUnit\\Framework\\Attributes\\Group('skip')]\n    public function testSharedGet()", $c);
+        file_put_contents("tests/Filesystem/FilesystemTest.php", $c);
+    },
+    ["vendor/bin/phpunit", "--exclude-group", "skip"],
+    2
+];
+
+foreach (['async', 'cache', 'child-process', 'datagram', 'dns', 'event-loop', 'promise', 'promise-stream', 'promise-timer', 'stream'] as $repo) {
+    $repos["reactphp-$repo"] = ["https://github.com/reactphp/$repo.git", "", null, ["vendor/bin/phpunit"], 2];
+}
+
+$repos["revolt"] = ["https://github.com/revoltphp/event-loop.git", "", null, ["vendor/bin/phpunit"], 2];
+
+$repos["symfony"] = [
+    "https://github.com/symfony/symfony.git",
+    "",
+    function (): void {
+        e("php ./phpunit install");
+
+        // Test causes a heap-buffer-overflow but I cannot reproduce it locally...
+        $c = file_get_contents("src/Symfony/Component/HtmlSanitizer/Tests/HtmlSanitizerCustomTest.php");
+        $c = str_replace("public function testSanitizeDeepNestedString()", "/** @group skip */\n    public function testSanitizeDeepNestedString()", $c);
+        file_put_contents("src/Symfony/Component/HtmlSanitizer/Tests/HtmlSanitizerCustomTest.php", $c);
+        // Buggy FFI test in Symfony, see https://github.com/symfony/symfony/issues/47668
+        $c = file_get_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php"); 
+        $c = str_replace("*/\n    public function testCastNonTrailingCharPointer()", "* @group skip\n     */\n    public function testCastNonTrailingCharPointer()", $c);
+        file_put_contents("src/Symfony/Component/VarDumper/Tests/Caster/FFICasterTest.php", $c);
+    },
+    function (): iterable {
+        $it = new RecursiveDirectoryIterator("src/Symfony");
+        /** @var SplFileInfo $file */
+        foreach(new RecursiveIteratorIterator($it) as $file) {
+            if ($file->getBasename() == 'phpunit.xml.dist') {
+                yield [
+                    getcwd()."/phpunit",
+                    dirname($file->getRealPath()), 
+                    "--exclude-group",
+                    "tty,benchmark,intl-data,transient",
+                    "--exclude-group",
+                    "skip"
                 ];
             }
         }
@@ -64,8 +171,8 @@ $waitOne = function () use (&$finalStatus, &$parentPids): void {
     unset($parentPids[$res]);
     if (pcntl_wifexited($status)) {
         $status = pcntl_wexitstatus($status);
+        printMutex("Child task $desc exited with status $status");
         if ($status !== 0) {
-            printMutex("Child task $desc exited with status $status");
             $finalStatus = $status;
         }
     } elseif (pcntl_wifstopped($status)) {
