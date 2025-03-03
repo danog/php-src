@@ -204,7 +204,7 @@ typedef struct _zend_oparray_context {
 	int        last_brk_cont;
 	zend_brk_cont_element *brk_cont_array;
 	HashTable *labels;
-	const zend_property_info *active_property_info;
+	zend_string *active_property_info_name;
 	zend_property_hook_kind active_property_hook_kind;
 	bool       in_jmp_frameless_branch;
 } zend_oparray_context;
@@ -463,7 +463,7 @@ typedef struct _zend_property_info {
 #define OBJ_PROP_TO_OFFSET(num) \
 	((uint32_t)(XtOffsetOf(zend_object, properties_table) + sizeof(zval) * (num)))
 #define OBJ_PROP_TO_NUM(offset) \
-	((offset - OBJ_PROP_TO_OFFSET(0)) / sizeof(zval))
+	(((offset) - OBJ_PROP_TO_OFFSET(0)) / sizeof(zval))
 
 typedef struct _zend_class_constant {
 	zval value; /* flags are stored in u2 */
