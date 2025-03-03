@@ -118,20 +118,30 @@ hMailServer.exe /verysilent
 cd %APPVEYOR_BUILD_FOLDER%
 %PHP_BUILD_DIR%\php.exe -dextension_dir=%PHP_BUILD_DIR% -dextension=com_dotnet .github\setup_hmailserver.php
 
+rem prepare for com_dotnet
+nmake register_comtest
+
 mkdir %PHP_BUILD_DIR%\test_file_cache
 rem generate php.ini
 echo extension_dir=%PHP_BUILD_DIR% > %PHP_BUILD_DIR%\php.ini
 echo opcache.file_cache=%PHP_BUILD_DIR%\test_file_cache >> %PHP_BUILD_DIR%\php.ini
 if "%OPCACHE%" equ "1" echo zend_extension=php_opcache.dll >> %PHP_BUILD_DIR%\php.ini
-rem work-around for some spawned PHP processes requiring OpenSSL
+rem work-around for some spawned PHP processes requiring OpenSSL and sockets
 echo extension=php_openssl.dll >> %PHP_BUILD_DIR%\php.ini
+echo extension=php_sockets.dll >> %PHP_BUILD_DIR%\php.ini
 
 rem remove ext dlls for which tests are not supported
 for %%i in (ldap) do (
 	del %PHP_BUILD_DIR%\php_%%i.dll
 )
 
+rem reduce excessive stack reserve for testing
+editbin /stack:8388608 %PHP_BUILD_DIR%\php.exe
+editbin /stack:8388608 %PHP_BUILD_DIR%\php-cgi.exe
+
 set TEST_PHPDBG_EXECUTABLE=%PHP_BUILD_DIR%\phpdbg.exe
+
+copy /-y %DEPS_DIR%\bin\*.dll %PHP_BUILD_DIR%\*
 
 if "%ASAN%" equ "1" set ASAN_OPTS=--asan
 
@@ -141,6 +151,7 @@ nmake test TESTS="%OPCACHE_OPTS% -g FAIL,BORK,LEAK,XLEAK %ASAN_OPTS% --no-progre
 
 set EXIT_CODE=%errorlevel%
 
+nmake unregister_comtest
 taskkill /f /im snmpd.exe
 
 exit /b %EXIT_CODE%
