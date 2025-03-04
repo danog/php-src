@@ -501,7 +501,7 @@ jobs:
       - name: git checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: master
       - name: apt
         uses: ./.github/actions/apt-x64
       - name: ./configure
