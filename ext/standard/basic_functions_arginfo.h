@@ -2118,6 +2118,9 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_convert_uudecode arginfo_hex2bin
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_validate_heap, 0, 1, IS_VOID, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_var_dump, 0, 1, IS_VOID, 0)
 	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
 	ZEND_ARG_VARIADIC_TYPE_INFO(0, values, IS_MIXED, 0)
@@ -2859,6 +2862,7 @@ ZEND_FUNCTION(stream_filter_register);
 ZEND_FUNCTION(convert_uuencode);
 ZEND_FUNCTION(convert_uudecode);
 ZEND_FUNCTION(var_dump);
+ZEND_FUNCTION(validate_heap);
 ZEND_FUNCTION(var_export);
 ZEND_FUNCTION(debug_zval_dump);
 ZEND_FUNCTION(serialize);
@@ -3471,6 +3475,7 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_RAW_FENTRY("convert_uuencode", zif_convert_uuencode, arginfo_convert_uuencode, ZEND_ACC_COMPILE_TIME_EVAL, NULL, NULL)
 	ZEND_RAW_FENTRY("convert_uudecode", zif_convert_uudecode, arginfo_convert_uudecode, ZEND_ACC_COMPILE_TIME_EVAL, NULL, NULL)
 	ZEND_FE(var_dump, arginfo_var_dump)
+	ZEND_FE(validate_heap, arginfo_validate_heap)
 	ZEND_FE(var_export, arginfo_var_export)
 	ZEND_FE(debug_zval_dump, arginfo_debug_zval_dump)
 	ZEND_RAW_FENTRY("serialize", zif_serialize, arginfo_serialize, ZEND_ACC_COMPILE_TIME_EVAL, NULL, NULL)

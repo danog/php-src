@@ -1326,9 +1326,7 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 	zend_mm_free_slot *next = slot->next_free_slot;
 	if (EXPECTED(next != NULL)) {
 		zend_mm_free_slot *shadow = ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num);
-		if (UNEXPECTED(next != zend_mm_decode_free_slot(heap, shadow))) {
-			zend_mm_panic("zend_mm_heap corrupted");
-		}
+		ZEND_MM_CHECK(next == zend_mm_decode_free_slot(heap, shadow), "zend_mm_heap corrupted");
 	}
 	return (zend_mm_free_slot*)next;
 }
@@ -2528,6 +2526,11 @@ ZEND_API void zend_mm_shutdown(zend_mm_heap *heap, bool full, bool silent)
 /**************/
 /* PUBLIC API */
 /**************/
+
+ZEND_API void ZEND_FASTCALL _zend_mm_validate(zend_mm_heap *heap)
+{
+	zend_mm_gc(heap);
+}
 
 ZEND_API void* ZEND_FASTCALL _zend_mm_alloc(zend_mm_heap *heap, size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {

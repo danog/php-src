@@ -1884,6 +1884,8 @@ zend_result php_request_startup(void)
 /* {{{ php_request_shutdown */
 void php_request_shutdown(void *dummy)
 {
+	zend_mm_validate(zend_mm_get_heap());
+
 	bool report_memleaks;
 
 	EG(flags) |= EG_FLAGS_IN_SHUTDOWN;
@@ -1998,6 +2000,8 @@ void php_request_shutdown(void *dummy)
 #ifdef HAVE_DTRACE
 	DTRACE_REQUEST_SHUTDOWN(SAFE_FILENAME(SG(request_info).path_translated), SAFE_FILENAME(SG(request_info).request_uri), (char *)SAFE_FILENAME(SG(request_info).request_method));
 #endif /* HAVE_DTRACE */
+
+	zend_mm_validate(zend_mm_get_heap());
 }
 /* }}} */
 
