@@ -29,6 +29,9 @@ on:
       windows_version:
         required: true
         type: string
+      skip_laravel:
+        required: true
+        type: boolean
       skip_symfony:
         required: true
         type: boolean
@@ -76,11 +79,6 @@ jobs:
         with:
           runTestsParameters: >-
             --asan -x
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
   ALPINE:
     if: inputs.run_alpine
     name: ALPINE_X64_ASAN_UBSAN_DEBUG_ZTS
@@ -501,7 +499,7 @@ jobs:
       - name: git checkout
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: ${{ inputs.branch }}
       - name: apt
         uses: ./.github/actions/apt-x64
       - name: ./configure
@@ -550,7 +548,6 @@ jobs:
           php -v
 
       - name: Test multiple libraries and frameworks in parallel
-        if: always()
         run: |
           sudo prlimit --pid $$ --nofile=1048576:1048576
           
@@ -569,7 +566,7 @@ jobs:
       - name: 'Symfony Preloading'
         if: ${{ !cancelled() && !inputs.skip_symfony }}
         run: |
-          php /usr/bin/composer create-project symfony/symfony-demo symfony_demo --no-progress --ignore-platform-reqs
+          php /usr/bin/composer create-project symfony/symfony-demo symfony_demo --no-progress --ignore-platform-req=php+
           cd symfony_demo
           git rev-parse HEAD
           sed -i 's/PHP_SAPI/"cli-server"/g' var/cache/dev/App_KernelDevDebugContainer.preload.php
