@@ -46,10 +46,11 @@ jobs:
       fail-fast: false
       matrix:
         type: ['asan', 'verify_type_inference']
+        arch: ["${{ inputs.ubuntu_version }}", "${{ inputs.ubuntu_version }}-arm"] 
         exclude:
           - type: ${{ !inputs.community_verify_type_inference && 'verify_type_inference' || '*never*' }}
     name: "COMMUNITY_${{ matrix.type }}"
-    runs-on: ubuntu-${{ inputs.ubuntu_version }}
+    runs-on: "${{ matrix.arch }}"
     env:
       ASAN_OPTIONS: exitcode=139
       UBSAN_OPTIONS: print_stacktrace=1
