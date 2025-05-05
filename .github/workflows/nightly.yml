@@ -50,7 +50,7 @@ jobs:
         exclude:
           - type: ${{ !inputs.community_verify_type_inference && 'verify_type_inference' || '*never*' }}
     name: "COMMUNITY_${{ matrix.type }}"
-    runs-on: "${{ matrix.arch }}"
+    runs-on: "ubuntu-${{ matrix.arch }}"
     env:
       ASAN_OPTIONS: exitcode=139
       UBSAN_OPTIONS: print_stacktrace=1
