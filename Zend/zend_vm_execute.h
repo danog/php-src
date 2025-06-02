@@ -55096,6 +55096,7 @@ ZEND_API void execute_ex(zend_execute_data *ex)
 #endif
 {
 	DCL_OPLINE
+	zend_mm_validate(zend_mm_get_heap());
 
 #if defined(__GNUC__) && defined(__aarch64__)
 	__asm__ __volatile__ (""::: "v8","v9","v10","v11","v12","v13","v14","v15");

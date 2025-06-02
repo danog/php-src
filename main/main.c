@@ -1797,6 +1797,20 @@ static void sigchld_handler(int apar)
 /* }}} */
 #endif
 
+static void observer(zend_execute_data *execute_data)
+{
+	zend_mm_validate(zend_mm_get_heap());
+}
+static void observer_end(zend_execute_data *execute_data, zval *retval)
+{
+	zend_mm_validate(zend_mm_get_heap());
+}
+
+static zend_observer_fcall_handlers gc_observer(zend_execute_data *execute_data)
+{
+	return (zend_observer_fcall_handlers){observer, observer_end};
+}
+
 /* {{{ php_request_startup */
 zend_result php_request_startup(void)
 {
@@ -2163,6 +2177,7 @@ zend_result php_module_startup(sapi_module_struct *sf, zend_module_entry *additi
 	gc_globals_ctor();
 
 	zend_observer_startup();
+	zend_observer_fcall_register(gc_observer);
 #if ZEND_DEBUG
 	zend_observer_error_register(report_zend_debug_error_notify_cb);
 #endif
