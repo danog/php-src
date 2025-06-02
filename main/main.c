@@ -1917,42 +1917,42 @@ void php_request_shutdown(void *dummy)
 	if (ZEND_OBSERVER_ENABLED) {
 		zend_observer_fcall_end_all();
 	}
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 1. Call all possible shutdown functions registered with register_shutdown_function() */
 	if (PG(modules_activated)) {
 		php_call_shutdown_functions();
 	}
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 2. Call all possible __destruct() functions */
 	zend_try {
 		zend_call_destructors();
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 3. Flush all output buffers */
 	zend_try {
 		php_output_end_all();
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 4. Reset max_execution_time (no longer executing php code after response sent) */
 	zend_try {
 		zend_unset_timeout();
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 5. Call all extensions RSHUTDOWN functions */
 	if (PG(modules_activated)) {
 		zend_deactivate_modules();
 	}
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 6. Shutdown output layer (send the set HTTP headers, cleanup output handlers, etc.) */
 	zend_try {
 		php_output_deactivate();
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 7. Free shutdown functions */
 	if (PG(modules_activated)) {
 		php_free_shutdown_functions();
 	}
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 8. Destroy super-globals */
 	zend_try {
 		int i;
@@ -1961,10 +1961,10 @@ void php_request_shutdown(void *dummy)
 			zval_ptr_dtor(&PG(http_globals)[i]);
 		}
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 9. Shutdown scanner/executor/compiler and restore ini entries */
 	zend_deactivate();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 10. free request-bound globals */
 	php_free_request_globals();
 
@@ -1987,18 +1987,18 @@ void php_request_shutdown(void *dummy)
 	zend_try {
 		php_shutdown_stream_hashes();
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 15. Free Willy (here be crashes) */
 	zend_arena_destroy(CG(arena));
 	zend_interned_strings_deactivate();
 	zend_try {
 		shutdown_memory_manager(CG(unclean_shutdown) || !report_memleaks, 0);
 	} zend_end_try();
-
+zend_mm_validate(zend_mm_get_heap());
 	/* Reset memory limit, as the reset during INI_STAGE_DEACTIVATE may have failed.
 	 * At this point, no memory beyond a single chunk should be in use. */
 	zend_set_memory_limit(PG(memory_limit));
-
+zend_mm_validate(zend_mm_get_heap());
 	/* 16. Deactivate Zend signals */
 #ifdef ZEND_SIGNALS
 	zend_signal_deactivate();
