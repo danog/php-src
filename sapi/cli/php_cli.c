@@ -1098,6 +1098,7 @@ do_repeat:
 			}
 		}
 	} zend_end_try();
+	zend_mm_validate(zend_mm_get_heap());
 
 out:
 	if (file_handle.filename) {
@@ -1111,6 +1112,7 @@ out:
 		free(translated_path);
 		translated_path = NULL;
 	}
+	zend_mm_validate(zend_mm_get_heap());
 	if (context.mode == PHP_CLI_MODE_LINT && argc > php_optind && strcmp(argv[php_optind], "--")) {
 		script_file = NULL;
 		goto do_repeat;
@@ -1309,6 +1311,7 @@ exit_loop:
 		if (sapi_module == &cli_sapi_module) {
 #endif
 			exit_status = do_cli(argc, argv);
+			zend_mm_validate(zend_mm_get_heap());
 #ifndef PHP_CLI_WIN32_NO_CONSOLE
 		} else {
 			exit_status = do_cli_server(argc, argv);
