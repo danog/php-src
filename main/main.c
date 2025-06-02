@@ -2443,6 +2443,7 @@ int php_module_shutdown_wrapper(sapi_module_struct *sapi_globals)
 void php_module_shutdown(void)
 {
 	int module_number=0;
+	zend_mm_validate(zend_mm_get_heap());
 
 	module_shutdown = true;
 
