@@ -3843,8 +3843,14 @@ static void php_pgsql_do_async(INTERNAL_FUNCTION_PARAMETERS, int entry_type)
 			int rc;
 
 			c = PQgetCancel(pgsql);
+			/* PQcancel
+			 * The return value of PQcancel is 1 if the cancel request was successfully dispatched and 0 if not.
+			 * If not, errbuf is filled with an explanatory error message.
+			 * errbuf must be a char array of size errbufsize (the recommended size is 256 bytes).
+			 * https://www.postgresql.org/docs/current/libpq-cancel.html#LIBPQ-PQCANCEL
+			 */
 			RETVAL_LONG((rc = PQcancel(c, err, sizeof(err))));
-			if (rc < 0) {
+			if (rc == 0) {
 				zend_error(E_WARNING, "cannot cancel the query: %s", err);
 			}
 			while ((pgsql_result = PQgetResult(pgsql))) {
@@ -6215,7 +6221,7 @@ PHP_FUNCTION(pg_put_copy_end)
 {
 	zval *pgsql_link;
 	pgsql_link_handle *link;
-	zend_string *error;
+	zend_string *error = NULL;
 	char *err = NULL;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
