@@ -934,6 +934,7 @@ do_repeat:
 			} else {
 				php_execute_script(&file_handle);
 			}
+			zend_mm_validate(zend_mm_get_heap());
 			break;
 		case PHP_CLI_MODE_LINT:
 			if (php_lint_script(&file_handle) == SUCCESS) {
