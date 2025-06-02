@@ -1313,6 +1313,7 @@ exit_loop:
 		} else {
 			exit_status = do_cli_server(argc, argv);
 		}
+		zend_mm_validate(zend_mm_get_heap());
 #endif
 	} zend_end_try();
 	zend_mm_validate(zend_mm_get_heap());
