@@ -2481,6 +2481,7 @@ void php_module_shutdown(void)
 
 #ifndef ZTS
 	zend_ini_shutdown();
+	zend_mm_validate(zend_mm_get_heap());
 	shutdown_memory_manager(CG(unclean_shutdown), 1);
 #else
 	zend_ini_global_shutdown();

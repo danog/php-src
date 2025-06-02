@@ -2073,6 +2073,10 @@ static zend_mm_heap *zend_mm_init(void)
 
 ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 {
+	zend_mm_chunk *p = heap->main_chunk->next;
+	while (p != heap->main_chunk) {
+		p = p->next;
+	}
 	zend_mm_free_slot *p, *q;
 	zend_mm_chunk *chunk;
 	size_t page_offset;
