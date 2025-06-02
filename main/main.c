@@ -1997,7 +1997,7 @@ zend_mm_validate(zend_mm_get_heap());
 zend_mm_validate(zend_mm_get_heap());
 	/* Reset memory limit, as the reset during INI_STAGE_DEACTIVATE may have failed.
 	 * At this point, no memory beyond a single chunk should be in use. */
-	zend_set_memory_limit(PG(memory_limit));
+	//zend_set_memory_limit(PG(memory_limit));
 zend_mm_validate(zend_mm_get_heap());
 	/* 16. Deactivate Zend signals */
 #ifdef ZEND_SIGNALS
