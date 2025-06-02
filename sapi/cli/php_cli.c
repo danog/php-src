@@ -1315,6 +1315,7 @@ exit_loop:
 		}
 #endif
 	} zend_end_try();
+	zend_mm_validate(zend_mm_get_heap());
 out:
 	if (ini_path_override) {
 		free(ini_path_override);
