@@ -1104,10 +1104,12 @@ out:
 	if (file_handle.filename) {
 		zend_destroy_file_handle(&file_handle);
 	}
+	zend_mm_validate(zend_mm_get_heap());
 	if (request_started) {
 		php_request_shutdown((void *) 0);
 		request_started = 0;
 	}
+	zend_mm_validate(zend_mm_get_heap());
 	if (translated_path) {
 		free(translated_path);
 		translated_path = NULL;
