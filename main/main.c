@@ -1799,11 +1799,11 @@ static void sigchld_handler(int apar)
 
 static void observer(zend_execute_data *execute_data)
 {
-	zend_mm_validate(zend_mm_get_heap());
+	//zend_mm_validate(zend_mm_get_heap());
 }
 static void observer_end(zend_execute_data *execute_data, zval *retval)
 {
-	zend_mm_validate(zend_mm_get_heap());
+	//zend_mm_validate(zend_mm_get_heap());
 }
 
 static zend_observer_fcall_handlers gc_observer(zend_execute_data *execute_data)
