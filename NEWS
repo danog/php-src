@@ -10,12 +10,25 @@ PHP                                                                        NEWS
   . Fixed bugs GH-17711 and GH-18022 (Infinite recursion on deprecated attribute
     evaluation) and GH-18464 (Recursion protection for deprecation constants not
     released on bailout). (DanielEScherzer and ilutov)
+  . Fixed GH-18695 (zend_ast_export() - float number is not preserved).
+    (Oleg Efimov)
+
+- Curl:
+  . Fix memory leak when setting a list via curl_setopt fails. (nielsdos)
 
 - Date:
   . Fix leaks with multiple calls to DatePeriod iterator current(). (nielsdos)
 
+- FPM:
+  . Fixed GH-18662 (fpm_get_status segfault). (txuna)
+
 - Intl:
   . Fix memory leak in intl_datetime_decompose() on failure. (nielsdos)
+  . Fix memory leak in locale lookup on failure. (nielsdos)
+
+- OpenSSL:
+  . Fix memory leak of X509_STORE in php_openssl_setup_verify() on failure.
+    (nielsdos)
 
 - Phar:
   . Add missing filter cleanups on phar failure. (nielsdos)
@@ -24,6 +37,10 @@ PHP                                                                        NEWS
 - PGSQL:
   . Fix warning not being emitted when failure to cancel a query with
     pg_cancel_query(). (Girgias)
+
+- Random:
+  . Fix reference type confusion and leak in user random engine.
+    (nielsdos, timwolla)
 
 - Readline:
   . Fix memory leak when calloc() fails in php_readline_completion_cb().
