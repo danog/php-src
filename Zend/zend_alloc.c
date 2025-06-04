@@ -2536,7 +2536,7 @@ ZEND_API void ZEND_FASTCALL _zend_mm_validate(zend_mm_heap *heap)
 		}
 	}*/
 	zend_mm_gc(heap);
-	//zend_mm_gc(heap);
+	zend_mm_gc(heap);
 }
 
 ZEND_API void* ZEND_FASTCALL _zend_mm_alloc(zend_mm_heap *heap, size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
