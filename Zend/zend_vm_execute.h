@@ -55097,7 +55097,7 @@ ZEND_API void execute_ex(zend_execute_data *ex)
 {
 	DCL_OPLINE
 	if (ex != NULL) {
-		zend_mm_validate(zend_mm_get_heap());
+		//zend_mm_validate(zend_mm_get_heap());
 	}
 
 #if defined(__GNUC__) && defined(__aarch64__)
