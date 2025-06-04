@@ -108,7 +108,7 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 						GC_ADDREF(obj);
 //zend_mm_validate_fast(zend_mm_get_heap());
 						obj->handlers->free_obj(obj);
-if (cnt > 100000) {
+if (cnt > 50000) {
 	zend_mm_validate(zend_mm_get_heap());
 }
 					}
