@@ -2539,6 +2539,17 @@ ZEND_API void ZEND_FASTCALL _zend_mm_validate(zend_mm_heap *heap)
 	zend_mm_gc(heap);
 }
 
+
+ZEND_API void ZEND_FASTCALL zend_mm_validate_fast(zend_mm_heap *heap)
+{
+	for (int i = 0; i < 30; i++) {
+		zend_mm_free_slot *slot = heap->free_slot[i];
+		if (slot != NULL) {
+			zend_mm_get_next_free_slot(heap, i, slot);
+		}
+	}
+}
+
 ZEND_API void* ZEND_FASTCALL _zend_mm_alloc(zend_mm_heap *heap, size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
 	return zend_mm_alloc_heap(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
