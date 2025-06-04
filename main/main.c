@@ -1990,7 +1990,9 @@ zend_mm_validate(zend_mm_get_heap());
 zend_mm_validate(zend_mm_get_heap());
 	/* 15. Free Willy (here be crashes) */
 	zend_arena_destroy(CG(arena));
+zend_mm_validate(zend_mm_get_heap());
 	zend_interned_strings_deactivate();
+zend_mm_validate(zend_mm_get_heap());
 	zend_try {
 		shutdown_memory_manager(CG(unclean_shutdown) || !report_memleaks, 0);
 	} zend_end_try();
