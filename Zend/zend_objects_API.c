@@ -104,11 +104,12 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
 					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
+					bool is_weakmap = strcmp(ZSTR_VAL(obj->ce->name), "WeakMap") == 0;
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
-//zend_mm_validate_fast(zend_mm_get_heap());
+if (is_weakmap) zend_mm_validate_fast(zend_mm_get_heap());
 						obj->handlers->free_obj(obj);
-if (cnt > 50000) {
+if (is_weakmap) {
 	zend_mm_validate(zend_mm_get_heap());
 }
 					}
