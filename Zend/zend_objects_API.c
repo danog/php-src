@@ -109,12 +109,14 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 						GC_ADDREF(obj);
 if (is_weakmap) {
 	zend_mm_validate_fast(zend_mm_get_heap());
-	puts("Validation OK\n");
+	zend_mm_validate_fast(zend_mm_get_heap());
+	puts("Pre validation OK\n");
 }
 						obj->handlers->free_obj(obj);
 if (is_weakmap) {
 	zend_mm_validate(zend_mm_get_heap());
-	puts("Validation OK\n");
+	zend_mm_validate(zend_mm_get_heap());
+	puts("Post validation OK\n");
 }
 					}
 				}
