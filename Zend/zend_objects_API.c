@@ -100,9 +100,9 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 		do {
 			obj_ptr--;
 			obj = *obj_ptr;
-			printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
 			if (IS_OBJ_VALID(obj)) {
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
+					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
