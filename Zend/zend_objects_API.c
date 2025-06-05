@@ -122,7 +122,7 @@ if (is_weakmap || !(cnt % 1000)) {
 	puts("Pre validation OK\n");
 }
 						obj->handlers->free_obj(obj);
-if (is_weakmap || !(cnt % 1000)) {
+if (is_weakmap || !(cnt % 1000) || 1) {
 	zend_mm_validate(zend_mm_get_heap());
 	puts("Post validation OK\n");
 }
