@@ -100,33 +100,25 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 		do {
 			obj_ptr--;
 			obj = *obj_ptr;
-			if (obj_ptr != end) {
-				obj_next = *(obj_ptr-1);
-				if (IS_OBJ_VALID(obj_next) && !(OBJ_FLAGS(obj_next) & IS_OBJ_FREE_CALLED)) {
-					if (strcmp(ZSTR_VAL(obj_next->ce->name), "WeakMap") == 0) {
-						zend_mm_validate(zend_mm_get_heap());
-						zend_mm_validate(zend_mm_get_heap());
-						puts("Prepre validation OK\n");
-					}
-				}
-			}
 			if (IS_OBJ_VALID(obj)) {
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
 					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
+
+zend_mm_validate(zend_mm_get_heap());
+puts("Pre flags OK\n");
+
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
-					bool is_weakmap = strcmp(ZSTR_VAL(obj->ce->name), "WeakMap") == 0;
+
+zend_mm_validate(zend_mm_get_heap());
+puts("Pre validation OK\n");
+
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
-if (is_weakmap || !(cnt % 1000)) {
-	zend_mm_validate(zend_mm_get_heap());
-	puts("Pre validation OK\n");
-}
 						obj->handlers->free_obj(obj);
-if (is_weakmap || !(cnt % 1000) || 1) {
-	zend_mm_validate(zend_mm_get_heap());
-	puts("Post validation OK\n");
-}
 					}
+
+zend_mm_validate(zend_mm_get_heap());
+puts("Post validation OK\n");
 				}
 			}
 			first = false;
