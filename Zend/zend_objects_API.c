@@ -104,25 +104,25 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
 					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
 
-zend_mm_validate(zend_mm_get_heap());
-puts("Pre flags OK\n");
+//zend_mm_validate(zend_mm_get_heap());
+//puts("Pre flags OK\n");
 
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 
-zend_mm_validate(zend_mm_get_heap());
-puts("Post flags OK\n");
+//zend_mm_validate(zend_mm_get_heap());
+//puts("Post flags OK\n");
 
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
 
-zend_mm_validate(zend_mm_get_heap());
-puts("Pre validation OK\n");
+//zend_mm_validate(zend_mm_get_heap());
+//puts("Pre validation OK\n");
 
 						obj->handlers->free_obj(obj);
 					}
 
-zend_mm_validate(zend_mm_get_heap());
-puts("Post validation OK\n");
+//zend_mm_validate(zend_mm_get_heap());
+//puts("Post validation OK\n");
 				}
 			}
 			first = false;
