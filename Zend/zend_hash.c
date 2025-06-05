@@ -1799,6 +1799,7 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 					} while (++p != end);
 				}
 			}
+			zend_mm_validate(zend_mm_get_heap());
 			zend_hash_iterators_remove(ht);
 			zend_mm_validate(zend_mm_get_heap());
 		}
