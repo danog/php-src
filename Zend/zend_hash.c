@@ -1799,8 +1799,8 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 					} while (++p != end);
 				}
 			}
-			zend_mm_validate(zend_mm_get_heap());
 			zend_hash_iterators_remove(ht);
+			zend_mm_validate(zend_mm_get_heap());
 		}
 	} else if (EXPECTED(HT_FLAGS(ht) & HASH_FLAG_UNINITIALIZED)) {
 		puts("Is uninted\n");
