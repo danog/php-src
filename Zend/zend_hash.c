@@ -1731,7 +1731,6 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 
 	if (ht->nNumUsed) {
 		if (HT_IS_PACKED(ht)) {
-			puts("Is packed\n");
 			if (ht->pDestructor) {
 				zval *zv = ht->arPacked;
 				zval *end = zv + ht->nNumUsed;
@@ -1752,12 +1751,10 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 			}
 			zend_hash_iterators_remove(ht);
 		} else {
-			puts("Is not packed\n");
 			Bucket *p = ht->arData;
 			Bucket *end = p + ht->nNumUsed;
 
 			if (ht->pDestructor) {
-				puts("Has htDestructor\n");
 				SET_INCONSISTENT(HT_IS_DESTROYING);
 
 				if (HT_HAS_STATIC_KEYS_ONLY(ht)) {
@@ -1792,7 +1789,6 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 
 				SET_INCONSISTENT(HT_DESTROYED);
 			} else {
-				puts("Has no htDestructor\n");
 				if (!HT_HAS_STATIC_KEYS_ONLY(ht)) {
 					do {
 						if (EXPECTED(p->key)) {
@@ -1804,7 +1800,6 @@ ZEND_API void ZEND_FASTCALL zend_hash_destroy(HashTable *ht)
 			zend_hash_iterators_remove(ht);
 		}
 	} else if (EXPECTED(HT_FLAGS(ht) & HASH_FLAG_UNINITIALIZED)) {
-		puts("Is uninted\n");
 		return;
 	}
 	pefree(HT_GET_DATA_ADDR(ht), GC_FLAGS(ht) & IS_ARRAY_PERSISTENT);
