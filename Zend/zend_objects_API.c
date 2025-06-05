@@ -82,7 +82,7 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_mark_destructed(zend_objects_stor
 
 ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_store *objects, bool fast_shutdown)
 {
-	zend_object **obj_ptr, **end, *obj;
+	zend_object **obj_ptr, **end, *obj, *obj_next;
 
 	if (objects->top <= 1) {
 		return;
@@ -100,6 +100,16 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 		do {
 			obj_ptr--;
 			obj = *obj_ptr;
+			if (obj_ptr != end) {
+				obj_next = *(obj_ptr-1);
+				if (IS_OBJ_VALID(obj_next) && !(OBJ_FLAGS(obj_next) & IS_OBJ_FREE_CALLED)) {
+					if (strcmp(ZSTR_VAL(obj_next->ce->name), "WeakMap") == 0) {
+						zend_mm_validate(zend_mm_get_heap());
+						zend_mm_validate(zend_mm_get_heap());
+						puts("Prepre validation OK\n");
+					}
+				}
+			}
 			if (IS_OBJ_VALID(obj)) {
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
 					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
