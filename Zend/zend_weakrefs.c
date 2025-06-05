@@ -335,6 +335,11 @@ static zend_object *zend_weakmap_create_object(zend_class_entry *ce)
 	return &wm->std;
 }
 
+
+#define HT_OK					0x00
+#define HT_IS_DESTROYING		0x01
+#define HT_DESTROYED			0x02
+#define HT_CLEANING				0x03
 static void zend_weakmap_free_obj(zend_object *object)
 {
 zend_mm_validate(zend_mm_get_heap());
@@ -354,7 +359,84 @@ zend_mm_validate(zend_mm_get_heap());
 zend_mm_validate(zend_mm_get_heap());
 	} ZEND_HASH_FOREACH_END();
 zend_mm_validate(zend_mm_get_heap());
-	zend_hash_destroy(&wm->ht);
+	HashTable *ht = &wm->ht;
+		IS_CONSISTENT(ht);
+	HT_ASSERT(ht, GC_REFCOUNT(ht) <= 1);
+
+	if (ht->nNumUsed) {
+		if (HT_IS_PACKED(ht)) {
+			if (ht->pDestructor) {
+				zval *zv = ht->arPacked;
+				zval *end = zv + ht->nNumUsed;
+
+				SET_INCONSISTENT(HT_IS_DESTROYING);
+				if (HT_IS_WITHOUT_HOLES(ht)) {
+					do {
+						ht->pDestructor(zv);
+					} while (++zv != end);
+				} else {
+					do {
+						if (EXPECTED(Z_TYPE_P(zv) != IS_UNDEF)) {
+							ht->pDestructor(zv);
+						}
+					} while (++zv != end);
+				}
+				SET_INCONSISTENT(HT_DESTROYED);
+			}
+			zend_hash_iterators_remove(ht);
+		} else {
+			Bucket *p = ht->arData;
+			Bucket *end = p + ht->nNumUsed;
+
+			if (ht->pDestructor) {
+				SET_INCONSISTENT(HT_IS_DESTROYING);
+
+				if (HT_HAS_STATIC_KEYS_ONLY(ht)) {
+					if (HT_IS_WITHOUT_HOLES(ht)) {
+						do {
+							ht->pDestructor(&p->val);
+						} while (++p != end);
+					} else {
+						do {
+							if (EXPECTED(Z_TYPE(p->val) != IS_UNDEF)) {
+								ht->pDestructor(&p->val);
+							}
+						} while (++p != end);
+					}
+				} else if (HT_IS_WITHOUT_HOLES(ht)) {
+					do {
+						ht->pDestructor(&p->val);
+						if (EXPECTED(p->key)) {
+							zend_string_release(p->key);
+						}
+					} while (++p != end);
+				} else {
+					do {
+						if (EXPECTED(Z_TYPE(p->val) != IS_UNDEF)) {
+							ht->pDestructor(&p->val);
+							if (EXPECTED(p->key)) {
+								zend_string_release(p->key);
+							}
+						}
+					} while (++p != end);
+				}
+
+				SET_INCONSISTENT(HT_DESTROYED);
+			} else {
+				if (!HT_HAS_STATIC_KEYS_ONLY(ht)) {
+					do {
+						if (EXPECTED(p->key)) {
+							zend_string_release(p->key);
+						}
+					} while (++p != end);
+				}
+			}
+			zend_hash_iterators_remove(ht);
+		}
+	} else if (EXPECTED(HT_FLAGS(ht) & HASH_FLAG_UNINITIALIZED)) {
+		return;
+	}
+	pefree(HT_GET_DATA_ADDR(ht), GC_FLAGS(ht) & IS_ARRAY_PERSISTENT);
 zend_mm_validate(zend_mm_get_heap());
 	zend_object_std_dtor(&wm->std);
 zend_mm_validate(zend_mm_get_heap());
