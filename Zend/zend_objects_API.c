@@ -110,10 +110,14 @@ puts("Pre flags OK\n");
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 
 zend_mm_validate(zend_mm_get_heap());
-puts("Pre validation OK\n");
+puts("Post flags OK\n");
 
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
+
+zend_mm_validate(zend_mm_get_heap());
+puts("Pre validation OK\n");
+
 						obj->handlers->free_obj(obj);
 					}
 
