@@ -430,7 +430,7 @@ void shutdown_executor(void) /* {{{ */
 	zend_string *key;
 	zval *zv;
 #if ZEND_DEBUG
-	bool fast_shutdown = 0;
+	bool fast_shutdown = 1;
 #else
 	bool fast_shutdown = is_zend_mm() && !EG(full_tables_cleanup);
 #endif

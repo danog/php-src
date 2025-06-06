@@ -351,14 +351,14 @@ zend_mm_validate(zend_mm_get_heap());
 void *p = ZEND_WEAKREF_ENCODE(&wm->ht, ZEND_WEAKREF_TAG_MAP);
 zend_mm_validate(zend_mm_get_heap());
 		zend_weakref_unregister(a, p, 0);
-zend_mm_validate(zend_mm_get_heap());
+//zend_mm_validate(zend_mm_get_heap());
 	} ZEND_HASH_FOREACH_END();
-zend_mm_validate(zend_mm_get_heap());
+//zend_mm_validate(zend_mm_get_heap());
 	zend_hash_destroy(&wm->ht);
-zend_mm_validate_fast(zend_mm_get_heap());
-zend_mm_validate(zend_mm_get_heap());
+//zend_mm_validate_fast(zend_mm_get_heap());
+//zend_mm_validate(zend_mm_get_heap());
 	zend_object_std_dtor(&wm->std);
-zend_mm_validate(zend_mm_get_heap());
+//zend_mm_validate(zend_mm_get_heap());
 }
 
 static zval *zend_weakmap_read_dimension(zend_object *object, zval *offset, int type, zval *rv)
