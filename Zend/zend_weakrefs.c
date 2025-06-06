@@ -358,7 +358,7 @@ zend_mm_validate(zend_mm_get_heap());
 void *p = ZEND_WEAKREF_ENCODE(&wm->ht, ZEND_WEAKREF_TAG_MAP);
 zend_mm_validate(zend_mm_get_heap());
 		zend_weakref_unregister(a, p, 0);
-//zend_mm_validate(zend_mm_get_heap());
+zend_mm_validate(zend_mm_get_heap());
 	} ZEND_HASH_FOREACH_END();
 //zend_mm_validate(zend_mm_get_heap());
 	zend_hash_destroy(&wm->ht);
