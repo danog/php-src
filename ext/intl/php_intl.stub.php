@@ -447,6 +447,8 @@ function grapheme_stristr(string $haystack, string $needle, bool $beforeNeedle =
 
 function grapheme_str_split(string $string, int $length = 1): array|false {}
 
+function grapheme_levenshtein(string $string1, string $string2, int $insertion_cost = 1, int $replacement_cost = 1, int $deletion_cost = 1): int|false {}
+
 /** @param int $next */
 function grapheme_extract(string $haystack, int $size, int $type = GRAPHEME_EXTR_COUNT, int $offset = 0, &$next = null): string|false {}
 
@@ -501,6 +503,12 @@ function locale_lookup(array $languageTag, string $locale, bool $canonicalize = 
 
 function locale_accept_from_http(string $header): string|false {}
 
+function locale_is_right_to_left(string $locale): bool {}
+
+function locale_add_likely_subtags(string $locale): string|false {}
+
+function locale_minimize_subtags(string $locale): string|false {}
+
 /* msgformat */
 
 function msgfmt_create(string $locale, string $pattern): ?MessageFormatter {}
@@ -537,9 +545,7 @@ function normalizer_normalize(string $string, int $form = Normalizer::FORM_C): s
 
 function normalizer_is_normalized(string $string, int $form = Normalizer::FORM_C): bool {}
 
-#if U_ICU_VERSION_MAJOR_NUM >= 56
 function normalizer_get_raw_decomposition(string $string, int $form = Normalizer::FORM_C): ?string {}
-#endif
 
 /* resourceboundle */
 
@@ -605,11 +611,9 @@ function intltz_get_tz_data_version(): string|false {}
 
 function intltz_get_unknown(): IntlTimeZone {}
 
-#if U_ICU_VERSION_MAJOR_NUM >= 52
 function intltz_get_windows_id(string $timezoneId): string|false {}
 
 function intltz_get_id_for_windows_id(string $timezoneId, ?string $region = null): string|false {}
-#endif
 
 function intltz_has_same_rules(IntlTimeZone $timezone, IntlTimeZone $other): bool {}
 
@@ -637,6 +641,6 @@ function transliterator_create_inverse(Transliterator $transliterator): ?Transli
 
 function transliterator_transliterate(Transliterator|string $transliterator, string $string, int $start = 0, int $end = -1): string|false {}
 
-function transliterator_get_error_code(Transliterator $transliterator): int|false {}
+function transliterator_get_error_code(Transliterator $transliterator): int {}
 
-function transliterator_get_error_message(Transliterator $transliterator): string|false {}
+function transliterator_get_error_message(Transliterator $transliterator): string {}

@@ -1045,7 +1045,12 @@ static ssize_t php_plain_files_dirstream_read(php_stream *stream, char *buf, siz
 
 	result = readdir(dir);
 	if (result) {
-		PHP_STRLCPY(ent->d_name, result->d_name, sizeof(ent->d_name), strlen(result->d_name));
+		size_t len = strlen(result->d_name);
+		if (UNEXPECTED(len >= sizeof(ent->d_name))) {
+			return -1;
+		}
+		/* Include null byte */
+		memcpy(ent->d_name, result->d_name, len+1);
 #ifdef _DIRENT_HAVE_D_TYPE
 		ent->d_type = result->d_type;
 #else
@@ -1083,11 +1088,9 @@ static php_stream *php_plain_files_dir_opener(php_stream_wrapper *wrapper, const
 	DIR *dir = NULL;
 	php_stream *stream = NULL;
 
-#ifdef HAVE_GLOB
 	if (options & STREAM_USE_GLOB_DIR_OPEN) {
 		return php_glob_stream_wrapper.wops->dir_opener((php_stream_wrapper*)&php_glob_stream_wrapper, path, mode, options, opened_path, context STREAMS_REL_CC);
 	}
-#endif
 
 	if (((options & STREAM_DISABLE_OPEN_BASEDIR) == 0) && php_check_open_basedir(path)) {
 		return NULL;

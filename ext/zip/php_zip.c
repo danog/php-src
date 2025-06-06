@@ -30,13 +30,7 @@
 #include "php_zip.h"
 #include "php_zip_arginfo.h"
 
-#ifdef HAVE_GLOB
-#ifndef PHP_WIN32
-#include <glob.h>
-#else
-#include "win32/glob.h"
-#endif
-#endif
+#include "php_glob.h"
 
 /* {{{ Resource le */
 static int le_zip_dir;
@@ -580,48 +574,15 @@ static char * php_zipobj_get_zip_comment(ze_zip_object *obj, int *len) /* {{{ */
 }
 /* }}} */
 
-#ifdef HAVE_GLOB /* {{{ */
-#ifndef GLOB_ONLYDIR
-#define GLOB_ONLYDIR (1<<30)
-#define GLOB_EMULATE_ONLYDIR
-#define GLOB_FLAGMASK (~GLOB_ONLYDIR)
-#else
-#define GLOB_FLAGMASK (~0)
-#endif
-#ifndef GLOB_BRACE
-# define GLOB_BRACE 0
-#endif
-#ifndef GLOB_MARK
-# define GLOB_MARK 0
-#endif
-#ifndef GLOB_NOSORT
-# define GLOB_NOSORT 0
-#endif
-#ifndef GLOB_NOCHECK
-# define GLOB_NOCHECK 0
-#endif
-#ifndef GLOB_NOESCAPE
-# define GLOB_NOESCAPE 0
-#endif
-#ifndef GLOB_ERR
-# define GLOB_ERR 0
-#endif
-
-/* This is used for checking validity of passed flags (passing invalid flags causes segfault in glob()!! */
-#define GLOB_AVAILABLE_FLAGS (0 | GLOB_BRACE | GLOB_MARK | GLOB_NOSORT | GLOB_NOCHECK | GLOB_NOESCAPE | GLOB_ERR | GLOB_ONLYDIR)
-
-#endif /* }}} */
-
 int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_value) /* {{{ */
 {
-#ifdef HAVE_GLOB
 	int cwd_skip = 0;
 #ifdef ZTS
 	char cwd[MAXPATHLEN];
 	char work_pattern[MAXPATHLEN];
 	char *result;
 #endif
-	glob_t globbuf;
+	php_glob_t globbuf;
 	size_t n;
 	int ret;
 
@@ -630,7 +591,7 @@ int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_v
 		return -1;
 	}
 
-	if ((GLOB_AVAILABLE_FLAGS & flags) != flags) {
+	if ((PHP_GLOB_AVAILABLE_FLAGS & flags) != flags) {
 
 		php_error_docref(NULL, E_WARNING, "At least one of the passed flags is invalid or not supported on this platform");
 		return -1;
@@ -655,12 +616,12 @@ int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_v
 #endif
 
 	globbuf.gl_offs = 0;
-	if (0 != (ret = glob(pattern, flags & GLOB_FLAGMASK, NULL, &globbuf))) {
-#ifdef GLOB_NOMATCH
-		if (GLOB_NOMATCH == ret) {
+	if (0 != (ret = php_glob(pattern, flags & PHP_GLOB_FLAGMASK, NULL, &globbuf))) {
+#ifdef PHP_GLOB_NOMATCH
+		if (PHP_GLOB_NOMATCH == ret) {
 			/* Some glob implementation simply return no data if no matches
-			   were found, others return the GLOB_NOMATCH error code.
-			   We don't want to treat GLOB_NOMATCH as an error condition
+			   were found, others return the PHP_GLOB_NOMATCH error code.
+			   We don't want to treat PHP_GLOB_NOMATCH as an error condition
 			   so that PHP glob() behaves the same on both types of
 			   implementations and so that 'foreach (glob() as ...'
 			   can be used for simple glob() calls without further error
@@ -687,7 +648,7 @@ int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_v
 
 	array_init(return_value);
 	for (n = 0; n < globbuf.gl_pathc; n++) {
-		/* we need to do this every time since GLOB_ONLYDIR does not guarantee that
+		/* we need to do this every time since PHP_GLOB_ONLYDIR does not guarantee that
 		 * all directories will be filtered. GNU libc documentation states the
 		 * following:
 		 * If the information about the type of the file is easily available
@@ -695,7 +656,7 @@ int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_v
 		 * determine the information for each file. I.e., the caller must still be
 		 * able to filter directories out.
 		 */
-		if (flags & GLOB_ONLYDIR) {
+		if (flags & PHP_GLOB_ONLYDIR) {
 			zend_stat_t s = {0};
 
 			if (0 != VCWD_STAT(globbuf.gl_pathv[n], &s)) {
@@ -710,12 +671,8 @@ int php_zip_glob(char *pattern, int pattern_len, zend_long flags, zval *return_v
 	}
 
 	ret = globbuf.gl_pathc;
-	globfree(&globbuf);
+	php_globfree(&globbuf);
 	return ret;
-#else
-	zend_throw_error(NULL, "Glob support is not available");
-	return 0;
-#endif  /* HAVE_GLOB */
 }
 /* }}} */
 
@@ -1025,25 +982,23 @@ static HashTable *php_zip_get_properties(zend_object *object)/* {{{ */
 /* }}} */
 
 #ifdef HAVE_PROGRESS_CALLBACK
-static void _php_zip_progress_callback_free(void *ptr)
+static void php_zip_progress_callback_free(void *ptr)
 {
 	ze_zip_object *obj = ptr;
 
-	if (!Z_ISUNDEF(obj->progress_callback)) {
-		zval_ptr_dtor(&obj->progress_callback);
-		ZVAL_UNDEF(&obj->progress_callback);
+	if (ZEND_FCC_INITIALIZED(obj->progress_callback)) {
+		zend_fcc_dtor(&obj->progress_callback);
 	}
 }
 #endif
 
 #ifdef HAVE_CANCEL_CALLBACK
-static void _php_zip_cancel_callback_free(void *ptr)
+static void php_zip_cancel_callback_free(void *ptr)
 {
 	ze_zip_object *obj = ptr;
 
-	if (!Z_ISUNDEF(obj->cancel_callback)) {
-		zval_ptr_dtor(&obj->cancel_callback);
-		ZVAL_UNDEF(&obj->cancel_callback);
+	if (ZEND_FCC_INITIALIZED(obj->cancel_callback)) {
+		zend_fcc_dtor(&obj->cancel_callback);
 	}
 }
 #endif
@@ -1053,9 +1008,6 @@ static void php_zip_object_free_storage(zend_object *object) /* {{{ */
 	ze_zip_object * intern = php_zip_fetch_object(object);
 	int i;
 
-	if (!intern) {
-		return;
-	}
 	if (intern->za) {
 		if (zip_close(intern->za) != 0) {
 			php_error_docref(NULL, E_WARNING, "Cannot destroy the zip context: %s", zip_strerror(intern->za));
@@ -1072,12 +1024,12 @@ static void php_zip_object_free_storage(zend_object *object) /* {{{ */
 
 #ifdef HAVE_PROGRESS_CALLBACK
 	/* if not properly called by libzip */
-	_php_zip_progress_callback_free(intern);
+	php_zip_progress_callback_free(intern);
 #endif
 
 #ifdef HAVE_CANCEL_CALLBACK
 	/* if not properly called by libzip */
-	_php_zip_cancel_callback_free(intern);
+	php_zip_cancel_callback_free(intern);
 #endif
 
 	intern->za = NULL;
@@ -3032,41 +2984,42 @@ PHP_METHOD(ZipArchive, getStream)
 }
 
 #ifdef HAVE_PROGRESS_CALLBACK
-static void _php_zip_progress_callback(zip_t *arch, double state, void *ptr)
+static void php_zip_progress_callback(zip_t *arch, double state, void *ptr)
 {
 	zval cb_args[1];
-	zval cb_retval;
 	ze_zip_object *obj = ptr;
 
 	ZVAL_DOUBLE(&cb_args[0], state);
-	if (call_user_function(EG(function_table), NULL, &obj->progress_callback, &cb_retval, 1, cb_args) == SUCCESS && !Z_ISUNDEF(cb_retval)) {
-		zval_ptr_dtor(&cb_retval);
-	}
+	zend_call_known_fcc(&obj->progress_callback, NULL, 1, cb_args, NULL);
 }
 
 /* {{{ register a progression callback: void callback(double state); */
 PHP_METHOD(ZipArchive, registerProgressCallback)
 {
 	struct zip *intern;
-	zval *self = ZEND_THIS;
 	double rate;
-	zend_fcall_info fci;
+	zend_fcall_info dummy_fci;
 	zend_fcall_info_cache fcc;
 	ze_zip_object *obj;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "df", &rate, &fci, &fcc) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "dF", &rate, &dummy_fci, &fcc) == FAILURE) {
 		RETURN_THROWS();
 	}
 
-	ZIP_FROM_OBJECT(intern, self);
-
-	obj = Z_ZIP_P(self);
+	/* Inline ZIP_FROM_OBJECT(intern, self); */
+	obj = Z_ZIP_P(ZEND_THIS);
+	intern = obj->za;
+	if (!intern) { \
+		zend_value_error("Invalid or uninitialized Zip object");
+		zend_release_fcall_info_cache(&fcc);
+		RETURN_THROWS();
+	}
 
 	/* register */
-	if (zip_register_progress_callback_with_state(intern, rate, _php_zip_progress_callback, _php_zip_progress_callback_free, obj)) {
+	if (zip_register_progress_callback_with_state(intern, rate, php_zip_progress_callback, php_zip_progress_callback_free, obj)) {
 		RETURN_FALSE;
 	}
-	ZVAL_COPY(&obj->progress_callback, &fci.function_name);
+	zend_fcc_dup(&obj->progress_callback, &fcc);
 
 	RETURN_TRUE;
 }
@@ -3074,41 +3027,56 @@ PHP_METHOD(ZipArchive, registerProgressCallback)
 #endif
 
 #ifdef HAVE_CANCEL_CALLBACK
-static int _php_zip_cancel_callback(zip_t *arch, void *ptr)
+static int php_zip_cancel_callback(zip_t *arch, void *ptr)
 {
 	zval cb_retval;
-	int retval = 0;
 	ze_zip_object *obj = ptr;
 
-	if (call_user_function(EG(function_table), NULL, &obj->cancel_callback, &cb_retval, 0, NULL) == SUCCESS && !Z_ISUNDEF(cb_retval)) {
-		retval = zval_get_long(&cb_retval);
-		zval_ptr_dtor(&cb_retval);
+	zend_call_known_fcc(&obj->cancel_callback, &cb_retval, 0, NULL, NULL);
+	if (Z_ISUNDEF(cb_retval)) {
+		/* Cancel if an exception has been thrown */
+		return -1;
 	}
+	bool failed = false;
+	zval *cb_retval_ptr = &cb_retval;
+	ZVAL_DEREF(cb_retval_ptr);
+	zend_long retval = zval_try_get_long(cb_retval_ptr, &failed);
+	if (failed) {
+		zend_type_error("Return value of callback provided to ZipArchive::registerCancelCallback()"
+			" must be of type int, %s returned", zend_zval_value_name(cb_retval_ptr));
+		zval_ptr_dtor(&cb_retval);
+		return -1;
+	}
+	zval_ptr_dtor(&cb_retval);
 
-	return retval;
+	return (int) retval;
 }
 
 /* {{{ register a progression callback: int callback(double state); */
 PHP_METHOD(ZipArchive, registerCancelCallback)
 {
 	struct zip *intern;
-	zval *self = ZEND_THIS;
-	zend_fcall_info fci;
+	zend_fcall_info dummy_fci;
 	zend_fcall_info_cache fcc;
 	ze_zip_object *obj;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "f", &fci, &fcc) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "F", &dummy_fci, &fcc) == FAILURE) {
 		RETURN_THROWS();
 	}
 
-	ZIP_FROM_OBJECT(intern, self);
-
-	obj = Z_ZIP_P(self);
+	/* Inline ZIP_FROM_OBJECT(intern, self); */
+	obj = Z_ZIP_P(ZEND_THIS);
+	intern = obj->za;
+	if (!intern) { \
+		zend_value_error("Invalid or uninitialized Zip object");
+		zend_release_fcall_info_cache(&fcc);
+		RETURN_THROWS();
+	}
 
 	/* register */
-	if (zip_register_cancel_callback_with_state(intern, _php_zip_cancel_callback, _php_zip_cancel_callback_free, obj)) {
+	if (zip_register_cancel_callback_with_state(intern, php_zip_cancel_callback, php_zip_cancel_callback_free, obj)) {
 		RETURN_FALSE;
 	}
-	ZVAL_COPY(&obj->cancel_callback, &fci.function_name);
+	zend_fcc_dup(&obj->cancel_callback, &fcc);
 
 	RETURN_TRUE;
 }

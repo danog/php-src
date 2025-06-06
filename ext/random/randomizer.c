@@ -297,7 +297,7 @@ PHP_METHOD(Random_Randomizer, getBytes)
 	while (total_size + 8 <= length) {
 		result = engine.algo->generate(engine.state);
 		if (EG(exception)) {
-			zend_string_free(retval);
+			zend_string_efree(retval);
 			RETURN_THROWS();
 		}
 
@@ -326,7 +326,7 @@ PHP_METHOD(Random_Randomizer, getBytes)
 	while (total_size < length) {
 		result = engine.algo->generate(engine.state);
 		if (EG(exception)) {
-			zend_string_free(retval);
+			zend_string_efree(retval);
 			RETURN_THROWS();
 		}
 
@@ -342,7 +342,7 @@ PHP_METHOD(Random_Randomizer, getBytes)
 	}
 
 	ZSTR_VAL(retval)[length] = '\0';
-	RETURN_STR(retval);
+	RETURN_NEW_STR(retval);
 }
 /* }}} */
 
@@ -356,7 +356,7 @@ PHP_METHOD(Random_Randomizer, shuffleArray)
 		Z_PARAM_ARRAY(array)
 	ZEND_PARSE_PARAMETERS_END();
 
-	ZVAL_DUP(return_value, array);
+	RETVAL_ARR(zend_array_dup(Z_ARRVAL_P(array)));
 	if (!php_array_data_shuffle(randomizer->engine, return_value)) {
 		RETURN_THROWS();
 	}
@@ -451,7 +451,7 @@ PHP_METHOD(Random_Randomizer, getBytesFromString)
 			uint64_t offset = engine.algo->range(engine.state, 0, max_offset);
 
 			if (EG(exception)) {
-				zend_string_free(retval);
+				zend_string_efree(retval);
 				RETURN_THROWS();
 			}
 
@@ -473,7 +473,7 @@ PHP_METHOD(Random_Randomizer, getBytesFromString)
 		while (total_size < length) {
 			php_random_result result = engine.algo->generate(engine.state);
 			if (EG(exception)) {
-				zend_string_free(retval);
+				zend_string_efree(retval);
 				RETURN_THROWS();
 			}
 
@@ -484,7 +484,7 @@ PHP_METHOD(Random_Randomizer, getBytesFromString)
 
 				if (offset > max_offset) {
 					if (++failures > PHP_RANDOM_RANGE_ATTEMPTS) {
-						zend_string_free(retval);
+						zend_string_efree(retval);
 						zend_throw_error(random_ce_Random_BrokenRandomEngineError, "Failed to generate an acceptable random number in %d attempts", PHP_RANDOM_RANGE_ATTEMPTS);
 						RETURN_THROWS();
 					}
@@ -503,7 +503,7 @@ PHP_METHOD(Random_Randomizer, getBytesFromString)
 	}
 
 	ZSTR_VAL(retval)[length] = '\0';
-	RETURN_STR(retval);
+	RETURN_NEW_STR(retval);
 }
 /* }}} */
 
