@@ -925,54 +925,6 @@ static void *zend_mm_alloc_pages(zend_mm_heap *heap, uint32_t pages_count ZEND_F
 	while (1) {
 		if (UNEXPECTED(chunk->free_pages < pages_count)) {
 			goto not_found;
-#if 0
-		} else if (UNEXPECTED(chunk->free_pages + chunk->free_tail == ZEND_MM_PAGES)) {
-			if (UNEXPECTED(ZEND_MM_PAGES - chunk->free_tail < pages_count)) {
-				goto not_found;
-			} else {
-				page_num = chunk->free_tail;
-				goto found;
-			}
-		} else if (0) {
-			/* First-Fit Search */
-			int free_tail = chunk->free_tail;
-			zend_mm_bitset *bitset = chunk->free_map;
-			zend_mm_bitset tmp = *(bitset++);
-			int i = 0;
-
-			while (1) {
-				/* skip allocated blocks */
-				while (tmp == (zend_mm_bitset)-1) {
-					i += ZEND_MM_BITSET_LEN;
-					if (i == ZEND_MM_PAGES) {
-						goto not_found;
-					}
-					tmp = *(bitset++);
-				}
-				/* find first 0 bit */
-				page_num = i + zend_mm_bitset_nts(tmp);
-				/* reset bits from 0 to "bit" */
-				tmp &= tmp + 1;
-				/* skip free blocks */
-				while (tmp == 0) {
-					i += ZEND_MM_BITSET_LEN;
-					len = i - page_num;
-					if (len >= pages_count) {
-						goto found;
-					} else if (i >= free_tail) {
-						goto not_found;
-					}
-					tmp = *(bitset++);
-				}
-				/* find first 1 bit */
-				len = (i + zend_ulong_ntz(tmp)) - page_num;
-				if (len >= pages_count) {
-					goto found;
-				}
-				/* set bits from 0 to "bit" */
-				tmp |= tmp - 1;
-			}
-#endif
 		} else {
 			/* Best-Fit Search */
 			int best = -1;
@@ -1396,6 +1348,8 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 
 static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_num ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
+	return malloc(bin_data_size[bin_num]);
+
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 #if ZEND_MM_STAT
@@ -1418,6 +1372,8 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 
 static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr, int bin_num)
 {
+	free(ptr);
+	return;
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 	zend_mm_free_slot *p;
