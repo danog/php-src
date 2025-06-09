@@ -1011,9 +1011,10 @@ get_chunk:
 			if (heap->cached_chunks) {
 				heap->cached_chunks_count--;
 				chunk = heap->cached_chunks;
-				ZASAN_UNPOISON_MEMORY_REGION(chunk, ZEND_MM_CHUNK_SIZE);
-
+				ZASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk*));
 				heap->cached_chunks = chunk->next;
+				ZASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk*));
+
 			} else {
 #if ZEND_MM_LIMIT
 				if (UNEXPECTED(ZEND_MM_CHUNK_SIZE > heap->limit - heap->real_size)) {
@@ -1092,6 +1093,7 @@ found:
 	if (page_num == chunk->free_tail) {
 		chunk->free_tail = page_num + pages_count;
 	}
+	ZASAN_UNPOISION_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num), pages_count * ZEND_MM_PAGE_SIZE);
 	return ZEND_MM_PAGE_ADDR(chunk, page_num);
 }
 
@@ -1151,6 +1153,8 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 			zend_mm_chunk_free(heap, chunk, ZEND_MM_CHUNK_SIZE);
 		} else {
 //TODO: select the best chunk to delete???
+
+			// Unpoision chunk before accessing the next pointer & freeing it
 			ZASAN_UNPOISON_MEMORY_REGION(heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
 			chunk->next = heap->cached_chunks->next;
 			zend_mm_chunk_free(heap, heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
@@ -1168,6 +1172,8 @@ static zend_always_inline void zend_mm_free_pages_ex(zend_mm_heap *heap, zend_mm
 		/* this setting may be not accurate */
 		chunk->free_tail = page_num;
 	}
+	ZASAN_POISON_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num), pages_count * ZEND_MM_PAGE_SIZE);
+
 	if (free_chunk && chunk != heap->main_chunk && chunk->free_pages == ZEND_MM_PAGES - ZEND_MM_FIRST_PAGE) {
 		zend_mm_delete_chunk(heap, chunk);
 	}
@@ -1395,10 +1401,7 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 	printf("poison final: slot %p, size: %d\n", p, bin_data_size[bin_num]);
 
 #ifdef __SANITIZE_ADDRESS__
-	ZASAN_POISON_MEMORY_REGION(p, 8);
-	ZASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
-
-	ZASAN_UNPOISON_MEMORY_REGION(bin, bin_data_size[bin_num]);
+	ZASAN_POISON_MEMORY_REGION(p, bin_data_size[bin_num]);
 #endif
 
 	/* return first element */
@@ -1421,10 +1424,6 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 	if (EXPECTED(heap->free_slot[bin_num] != NULL)) {
 		zend_mm_free_slot *p = heap->free_slot[bin_num];
 		heap->free_slot[bin_num] = zend_mm_get_next_free_slot(heap, bin_num, p);
-
-#ifdef __SANITIZE_ADDRESS__
-		ZASAN_UNPOISON_MEMORY_REGION(p, bin_data_size[bin_num]);
-#endif
 
 		printf("Returning slot %p, size %d, value %ld\n", p, bin_data_size[bin_num], (uint64_t) p);
 		return p;
@@ -1517,7 +1516,6 @@ static zend_always_inline void *zend_mm_alloc_heap(zend_mm_heap *heap, size_t si
 		dbg->lineno = __zend_lineno;
 		dbg->orig_lineno = __zend_orig_lineno;
 #endif
-		return ptr;
 	} else if (EXPECTED(size <= ZEND_MM_MAX_LARGE_SIZE)) {
 		ptr = zend_mm_alloc_large(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 #if ZEND_DEBUG
@@ -1528,13 +1526,14 @@ static zend_always_inline void *zend_mm_alloc_heap(zend_mm_heap *heap, size_t si
 		dbg->lineno = __zend_lineno;
 		dbg->orig_lineno = __zend_orig_lineno;
 #endif
-		return ptr;
 	} else {
 #if ZEND_DEBUG
 		size = real_size;
 #endif
-		return zend_mm_alloc_huge(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+		ptr = zend_mm_alloc_huge(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 	}
+	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	return ptr;
 }
 
 static zend_always_inline void zend_mm_free_heap(zend_mm_heap *heap, void *ptr ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
@@ -1743,6 +1742,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						copy_size = use_copy_size ? MIN(size, copy_size) : size;
 						memcpy(ret, ptr, copy_size);
 						zend_mm_free_small(heap, ptr, old_bin_num);
+						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 					} else {
 						/* reallocation in-place */
 						ret = ptr;
@@ -1758,6 +1758,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						copy_size = use_copy_size ? MIN(old_size, copy_size) : old_size;
 						memcpy(ret, ptr, copy_size);
 						zend_mm_free_small(heap, ptr, old_bin_num);
+						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 #if ZEND_MM_STAT
 						heap->peak = MAX(orig_peak, heap->size);
 					} while (0);
@@ -1863,9 +1864,6 @@ static void zend_mm_add_huge_block(zend_mm_heap *heap, void *ptr, size_t size, s
 static void zend_mm_add_huge_block(zend_mm_heap *heap, void *ptr, size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 #endif
 {
-	//tmp
-	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
-
 	zend_mm_huge_list *list = (zend_mm_huge_list*)zend_mm_alloc_heap(heap, sizeof(zend_mm_huge_list) ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 	list->ptr = ptr;
 	list->size = size;
@@ -2046,7 +2044,7 @@ static void zend_mm_init_key(zend_mm_heap *heap)
 static zend_mm_heap *zend_mm_init(void)
 {
 	zend_mm_chunk *chunk = (zend_mm_chunk*)zend_mm_chunk_alloc_int(ZEND_MM_CHUNK_SIZE, ZEND_MM_CHUNK_SIZE);
-	ZASAN_UNPOISON_MEMORY_REGION(chunk, ZEND_MM_CHUNK_SIZE);
+	ZASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 
 	zend_mm_heap *heap;
 
@@ -2706,7 +2704,9 @@ ZEND_API bool is_zend_ptr(const void *ptr)
 		if (_size < _min_size) { \
 			return _emalloc_ ## _min_size(); \
 		} \
-		return zend_mm_alloc_small(AG(mm_heap), _num ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
+		void *ptr = zend_mm_alloc_small(AG(mm_heap), _num ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
+		ZASAN_UNPOISON_MEMORY_REGION(ptr, _size); \
+		return ptr; \
 	}
 
 ZEND_MM_BINS_INFO(_ZEND_BIN_ALLOCATOR, ZEND_MM_MIN_USEABLE_BIN_SIZE, y)
@@ -2714,13 +2714,17 @@ ZEND_MM_BINS_INFO(_ZEND_BIN_ALLOCATOR, ZEND_MM_MIN_USEABLE_BIN_SIZE, y)
 ZEND_API void* ZEND_FASTCALL _emalloc_large(size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
 	ZEND_MM_CUSTOM_ALLOCATOR(size);
-	return zend_mm_alloc_large_ex(AG(mm_heap), size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+	void *ptr = zend_mm_alloc_large_ex(AG(mm_heap), size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	return ptr;
 }
 
 ZEND_API void* ZEND_FASTCALL _emalloc_huge(size_t size)
 {
 	ZEND_MM_CUSTOM_ALLOCATOR(size);
-	return zend_mm_alloc_huge(AG(mm_heap), size);
+	void *ptr = zend_mm_alloc_huge(AG(mm_heap), size);
+	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	return ptr;
 }
 
 #if ZEND_DEBUG
