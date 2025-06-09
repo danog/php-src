@@ -1836,6 +1836,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						chunk->free_pages -= new_pages_count - old_pages_count;
 						zend_mm_bitset_set_range(chunk->free_map, page_num + old_pages_count, new_pages_count - old_pages_count);
 						chunk->map[page_num] = ZEND_MM_LRUN(new_pages_count);
+						ZASAN_UNPOISON_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num + old_pages_count), (new_pages_count - old_pages_count) * ZEND_MM_PAGE_SIZE);
 #if ZEND_DEBUG
 						dbg = zend_mm_get_debug_info(heap, ptr);
 						dbg->size = real_size;
