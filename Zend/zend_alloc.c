@@ -178,17 +178,17 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 #ifdef __SANITIZE_ADDRESS__
 # include <sanitizer/asan_interface.h>
 
-#define ZASAN_POISON_MEMORY_REGION(ptr, size) do { \
-		if (UNEXPECTED(((const void*) ptr) % 8)) { \
+#define ZASAN_POISON_MEMORY_REGION(_ptr, _size) do { \
+		if (UNEXPECTED(((const void*) (_ptr)) % 8)) { \
 			zend_mm_panic("Wrong alignment"); \
 		} \
-	ASAN_POISON_MEMORY_REGION(ptr, size);\
+	ASAN_POISON_MEMORY_REGION((_ptr), (_size));\
 } while (0);
-#define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
-		if (UNEXPECTED(((const void*) ptr) % 8)) { \
+#define ZASAN_UNPOISON_MEMORY_REGION(_ptr, _size) do { \
+		if (UNEXPECTED(((const void*) (_ptr)) % 8)) { \
 			zend_mm_panic("Wrong alignment"); \
 		} \
-	ASAN_UNPOISON_MEMORY_REGION(ptr, size);\
+	ASAN_UNPOISON_MEMORY_REGION((_ptr), (_size));\
 } while (0);
 
 #endif
