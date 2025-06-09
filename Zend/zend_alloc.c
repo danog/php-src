@@ -83,23 +83,6 @@ typedef int pid_t;
 #include <limits.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifdef __SANITIZE_ADDRESS__
-# include <sanitizer/asan_interface.h>
-
-#define ZASAN_POISON_MEMORY_REGION(ptr, size) do { \
-		if (UNEXPECTED(ptr % 8)) { \
-			zend_mm_panic("Wrong alignment"); \
-		} \
-	ASAN_POISION_MEMORY_REGION(ptr, size);\
-} while (0);
-#define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
-		if (UNEXPECTED(ptr % 8)) { \
-			zend_mm_panic("Wrong alignment"); \
-		} \
-	ASAN_UNPOISION_MEMORY_REGION(ptr, size);\
-} while (0);
-
-#endif
 
 
 #ifndef _WIN32
@@ -192,6 +175,23 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 # define ZEND_MM_ASSERT(condition) ZEND_MM_CHECK(condition, "Assertion")
 #endif
 
+#ifdef __SANITIZE_ADDRESS__
+# include <sanitizer/asan_interface.h>
+
+#define ZASAN_POISON_MEMORY_REGION(ptr, size) do { \
+		if (UNEXPECTED(ptr % 8)) { \
+			zend_mm_panic("Wrong alignment"); \
+		} \
+	ASAN_POISION_MEMORY_REGION(ptr, size);\
+} while (0);
+#define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
+		if (UNEXPECTED(ptr % 8)) { \
+			zend_mm_panic("Wrong alignment"); \
+		} \
+	ASAN_UNPOISION_MEMORY_REGION(ptr, size);\
+} while (0);
+
+#endif
 typedef uint32_t   zend_mm_page_info; /* 4-byte integer */
 typedef zend_ulong zend_mm_bitset;    /* 4-byte or 8-byte integer */
 
