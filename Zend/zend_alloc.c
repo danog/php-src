@@ -1368,6 +1368,7 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 			dbg->size = 0;
 		} while (0);
 #endif
+	printf("poison final: slot %p,  bin_num: %d\n", p, bin_num);
 
 #ifdef __SANITIZE_ADDRESS__
 	ASAN_POISON_MEMORY_REGION(p, 8);
