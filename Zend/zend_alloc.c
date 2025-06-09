@@ -1274,7 +1274,7 @@ static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, ui
 
 #ifdef __SANITIZE_ADDRESS__
 	ASAN_POISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
-	ASAN_POISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_Num), sizeof(zend_mm_free_slot*));
+	ASAN_POISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), sizeof(zend_mm_free_slot*));
 #endif
 }
 
@@ -1282,7 +1282,7 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 {
 #ifdef __SANITIZE_ADDRESS__
 	ASAN_UNPOISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
-	ASAN_UNPOISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_Num), sizeof(zend_mm_free_slot*));
+	ASAN_UNPOISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), sizeof(zend_mm_free_slot*));
 #endif
 	zend_mm_free_slot *next = slot->next_free_slot;
 	if (EXPECTED(next != NULL)) {
