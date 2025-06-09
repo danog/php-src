@@ -1356,6 +1356,10 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 		p = (zend_mm_free_slot*)((char*)p + bin_data_size[bin_num]);
 	} while (p != end);
 
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_UNPOISON_MEMORY_REGION(p, 8);
+#endif
+
 	/* terminate list using NULL */
 	p->next_free_slot = NULL;
 #if ZEND_DEBUG
