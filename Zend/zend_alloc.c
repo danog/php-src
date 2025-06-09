@@ -1276,9 +1276,9 @@ static zend_always_inline zend_mm_free_slot* zend_mm_decode_free_slot(zend_mm_he
 #endif
 }
 
-static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot *slot, zend_mm_free_slot *next)
+static zend_always_inline void zend_mm_set_next_free_slot(const char *from, zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot *slot, zend_mm_free_slot *next)
 {
-	printf("set_next_free_slot: slot %p, next: %p, bin_num: %d\n", slot, next, bin_num);
+	printf("set_next_free_slot from %s: slot %p, next: %p, bin_num: %d\n", from, slot, next, bin_num);
 
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
@@ -1358,7 +1358,7 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 	end = (zend_mm_free_slot*)((char*)bin + (bin_data_size[bin_num] * (bin_elements[bin_num] - 1)));
 	heap->free_slot[bin_num] = p = (zend_mm_free_slot*)((char*)bin + bin_data_size[bin_num]);
 	do {
-		zend_mm_set_next_free_slot(heap, bin_num, p, (zend_mm_free_slot*)((char*)p + bin_data_size[bin_num]));
+		zend_mm_set_next_free_slot("alloc_small", heap, bin_num, p, (zend_mm_free_slot*)((char*)p + bin_data_size[bin_num]));
 #if ZEND_DEBUG
 		do {
 			zend_mm_debug_info *dbg = (zend_mm_debug_info*)((char*)p + bin_data_size[bin_num] - ZEND_MM_ALIGNED_SIZE(sizeof(zend_mm_debug_info)));
@@ -1444,7 +1444,7 @@ static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr,
 #endif
 
 	p = (zend_mm_free_slot*)ptr;
-	zend_mm_set_next_free_slot(heap, bin_num, p, heap->free_slot[bin_num]);
+	zend_mm_set_next_free_slot("free_small", heap, bin_num, p, heap->free_slot[bin_num]);
 	heap->free_slot[bin_num] = p;
 }
 
@@ -2156,7 +2156,7 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 				if (q == (zend_mm_free_slot*)&heap->free_slot[i]) {
 					q->next_free_slot = p;
 				} else {
-					zend_mm_set_next_free_slot(heap, i, q, p);
+					zend_mm_set_next_free_slot("gc", heap, i, q, p);
 				}
 			} else {
 				q = p;
