@@ -1449,6 +1449,8 @@ static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr,
 	p = (zend_mm_free_slot*)ptr;
 	zend_mm_set_next_free_slot("free_small", heap, bin_num, p, heap->free_slot[bin_num]);
 	heap->free_slot[bin_num] = p;
+
+	ZASAN_POISON_MEMORY_REGION(p, bin_data_size[bin_num]);
 }
 
 /********/
