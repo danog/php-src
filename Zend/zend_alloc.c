@@ -1298,6 +1298,11 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 		zend_mm_free_slot *shadow = ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num);
 		ZEND_MM_CHECK(next == zend_mm_decode_free_slot(heap, shadow), "zend_mm_heap corrupted");
 	}
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_POISON_MEMORY_REGION(slot, 8);
+	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
+#endif
+
 	return (zend_mm_free_slot*)next;
 }
 
@@ -1360,6 +1365,11 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 		} while (0);
 #endif
 
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_POISON_MEMORY_REGION(p, 8);
+	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
+#endif
+
 	/* return first element */
 	return bin;
 }
@@ -1380,6 +1390,12 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 	if (EXPECTED(heap->free_slot[bin_num] != NULL)) {
 		zend_mm_free_slot *p = heap->free_slot[bin_num];
 		heap->free_slot[bin_num] = zend_mm_get_next_free_slot(heap, bin_num, p);
+
+#ifdef __SANITIZE_ADDRESS__
+		ASAN_UNPOISON_MEMORY_REGION(p, 8);
+		ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
+#endif
+
 		printf("Returning slot %p\n", p);
 		return p;
 	} else {
