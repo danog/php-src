@@ -1326,6 +1326,7 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 
 static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint32_t bin_num ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
+	printf("Alocating small bin %d\n", bin_num);
 	zend_mm_chunk *chunk;
 	int page_num;
 	zend_mm_bin *bin;
@@ -1425,6 +1426,8 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 
 static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr, int bin_num)
 {
+	printf("Freeing small bin %d, ptr %p\n", bin_num, ptr);
+
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 	zend_mm_free_slot *p;
@@ -2080,6 +2083,7 @@ static zend_mm_heap *zend_mm_init(void)
 
 ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 {
+	printf("Running gc\n");
 	zend_mm_free_slot *p, *q;
 	zend_mm_chunk *chunk;
 	size_t page_offset;
@@ -2201,6 +2205,7 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 		}
 	} while (chunk != heap->main_chunk);
 
+	printf("Done running gc\n");
 	return collected * ZEND_MM_PAGE_SIZE;
 }
 
@@ -2776,6 +2781,8 @@ ZEND_API void* ZEND_FASTCALL _emalloc(size_t size ZEND_FILE_LINE_DC ZEND_FILE_LI
 
 ZEND_API void ZEND_FASTCALL _efree(void *ptr ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
+		printf("Freed %p\n", ptr);
+
 #if ZEND_MM_CUSTOM
 	if (UNEXPECTED(AG(mm_heap)->use_custom_heap)) {
 		AG(mm_heap)->custom_heap._free(ptr ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
