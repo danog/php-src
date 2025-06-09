@@ -1282,7 +1282,7 @@ static zend_always_inline zend_mm_free_slot* zend_mm_decode_free_slot(zend_mm_he
 
 static zend_always_inline void zend_mm_set_next_free_slot(const char *from, zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot *slot, zend_mm_free_slot *next)
 {
-	printf("set_next_free_slot from %s: slot %p, next: %p, bin_num: %d\n", from, slot, next, bin_num);
+	printf("set_next_free_slot from %s: slot %p, next: %p, size: %d\n", from, slot, next, bin_data_size[bin_num]);
 
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
@@ -1330,7 +1330,7 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 
 static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint32_t bin_num ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
-	printf("Alocating small bin %d\n", bin_num);
+	printf("Alocating small size %d\n", bin_data_size[bin_num]);
 	zend_mm_chunk *chunk;
 	int page_num;
 	zend_mm_bin *bin;
@@ -1421,7 +1421,7 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 		ZASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
 #endif
 
-		printf("Returning slot %p, bin %d, value %ld\n", p, bin_num, (uint64_t) p);
+		printf("Returning slot %p, size %d, value %ld\n", p, bin_data_size[bin_num], (uint64_t) p);
 		return p;
 	} else {
 		return zend_mm_alloc_small_slow(heap, bin_num ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
@@ -1430,7 +1430,7 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 
 static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr, int bin_num)
 {
-	printf("Freeing small bin %d, ptr %p\n", bin_num, ptr);
+	printf("Freeing small size %d, ptr %p\n", bin_data_size[bin_num], ptr);
 
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
