@@ -1093,7 +1093,7 @@ found:
 	if (page_num == chunk->free_tail) {
 		chunk->free_tail = page_num + pages_count;
 	}
-	ZASAN_UNPOISON_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num), pages_count * ZEND_MM_PAGE_SIZE);
+	ZASAN_POISON_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num), pages_count * ZEND_MM_PAGE_SIZE);
 	return ZEND_MM_PAGE_ADDR(chunk, page_num);
 }
 
@@ -1359,6 +1359,8 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 	}
 
 	chunk = (zend_mm_chunk*)ZEND_MM_ALIGNED_BASE(bin, ZEND_MM_CHUNK_SIZE);
+	ZASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
+
 	page_num = ZEND_MM_ALIGNED_OFFSET(bin, ZEND_MM_CHUNK_SIZE) / ZEND_MM_PAGE_SIZE;
 	chunk->map[page_num] = ZEND_MM_SRUN(bin_num);
 	if (bin_pages[bin_num] > 1) {
@@ -1805,6 +1807,8 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					chunk->map[page_num] = ZEND_MM_LRUN(new_pages_count);
 					chunk->free_pages += rest_pages_count;
 					zend_mm_bitset_reset_range(chunk->free_map, page_num + new_pages_count, rest_pages_count);
+					ZASAN_POISON_MEMORY_REGION(ZEND_MM_PAGE_ADDR(chunk, page_num + new_pages_count), rest_pages_count * ZEND_MM_PAGE_SIZE);
+
 #if ZEND_DEBUG
 					dbg = zend_mm_get_debug_info(heap, ptr);
 					dbg->size = real_size;
