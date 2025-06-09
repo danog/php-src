@@ -1271,10 +1271,19 @@ static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, ui
 
 	slot->next_free_slot = next;
 	ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num) = zend_mm_encode_free_slot(heap, next);
+
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_POISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
+	ASAN_POISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_Num), sizeof(zend_mm_free_slot*));
+#endif
 }
 
 static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot* slot)
 {
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_UNPOISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
+	ASAN_UNPOISON_MEMORY_REGION(ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_Num), sizeof(zend_mm_free_slot*));
+#endif
 	zend_mm_free_slot *next = slot->next_free_slot;
 	if (EXPECTED(next != NULL)) {
 		zend_mm_free_slot *shadow = ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num);
@@ -1348,8 +1357,6 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 
 static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_num ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
-	return malloc(bin_data_size[bin_num]);
-
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 #if ZEND_MM_STAT
@@ -1372,8 +1379,6 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 
 static zend_always_inline void zend_mm_free_small(zend_mm_heap *heap, void *ptr, int bin_num)
 {
-	free(ptr);
-	return;
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 	zend_mm_free_slot *p;
