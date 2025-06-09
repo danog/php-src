@@ -87,11 +87,15 @@ typedef int pid_t;
 # include <sanitizer/asan_interface.h>
 
 #define ZASAN_POISON_MEMORY_REGION(ptr, size) do { \
-	assert(ptr % 8 == 0); \
+		if (UNEXPECTED(ptr % 8)) { \
+			zend_mm_panic("Wrong alignment"); \
+		} \
 	ASAN_POISION_MEMORY_REGION(ptr, size);\
 } while (0);
 #define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
-	assert(ptr % 8 == 0); \
+		if (UNEXPECTED(ptr % 8)) { \
+			zend_mm_panic("Wrong alignment"); \
+		} \
 	ASAN_UNPOISION_MEMORY_REGION(ptr, size);\
 } while (0);
 
