@@ -85,7 +85,18 @@ typedef int pid_t;
 #include <errno.h>
 #ifdef __SANITIZE_ADDRESS__
 # include <sanitizer/asan_interface.h>
+
+#define ZASAN_POISON_MEMORY_REGION(ptr, size) do { \
+	assert(ptr % 8 == 0); \
+	ASAN_POISION_MEMORY_REGION(ptr, size);\
+} while (0);
+#define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
+	assert(ptr % 8 == 0); \
+	ASAN_UNPOISION_MEMORY_REGION(ptr, size);\
+} while (0);
+
 #endif
+
 
 #ifndef _WIN32
 # include <sys/mman.h>
@@ -759,7 +770,7 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 			zend_mm_hugepage(ptr, size);
 		}
 #ifdef __SANITIZE_ADDRESS__
-		ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+		ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
 #endif
 		return ptr;
 	} else {
@@ -801,7 +812,7 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 			zend_mm_hugepage(ptr, size);
 		}
 # ifdef __SANITIZE_ADDRESS__
-		ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+		ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
 # endif
 #endif
 		return ptr;
@@ -1272,16 +1283,16 @@ static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, ui
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_UNPOISON_MEMORY_REGION(slot, 8);
-	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
+	ZASAN_UNPOISON_MEMORY_REGION(slot, 8);
+	ZASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
 #endif
 
 	slot->next_free_slot = next;
 	ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num) = zend_mm_encode_free_slot(heap, next);
 
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_POISON_MEMORY_REGION(slot, 8);
-	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
+	ZASAN_POISON_MEMORY_REGION(slot, 8);
+	ZASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
 #endif
 }
 
@@ -1290,8 +1301,8 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 	printf("get_next_free_slot: slot %p, bin_num: %d\n", slot, bin_num);
 
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_UNPOISON_MEMORY_REGION(slot, 8);
-	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
+	ZASAN_UNPOISON_MEMORY_REGION(slot, 8);
+	ZASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
 #endif
 	zend_mm_free_slot *next = slot->next_free_slot;
 	if (EXPECTED(next != NULL)) {
@@ -1299,8 +1310,8 @@ static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_
 		ZEND_MM_CHECK(next == zend_mm_decode_free_slot(heap, shadow), "zend_mm_heap corrupted");
 	}
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_POISON_MEMORY_REGION(slot, 8);
-	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
+	ZASAN_POISON_MEMORY_REGION(slot, 8);
+	ZASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), 8);
 #endif
 
 	return (zend_mm_free_slot*)next;
@@ -1357,7 +1368,7 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 	} while (p != end);
 
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_UNPOISON_MEMORY_REGION(p, 8);
+	ZASAN_UNPOISON_MEMORY_REGION(p, 8);
 #endif
 
 	/* terminate list using NULL */
@@ -1371,11 +1382,11 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 	printf("poison final: slot %p,  bin_num: %d\n", p, bin_num);
 
 #ifdef __SANITIZE_ADDRESS__
-	ASAN_POISON_MEMORY_REGION(p, 8);
-	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
+	ZASAN_POISON_MEMORY_REGION(p, 8);
+	ZASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
 
-	ASAN_UNPOISON_MEMORY_REGION(bin, 8);
-	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(bin, bin_num), 8);
+	ZASAN_UNPOISON_MEMORY_REGION(bin, 8);
+	ZASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(bin, bin_num), 8);
 
 #endif
 
@@ -1401,8 +1412,8 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 		heap->free_slot[bin_num] = zend_mm_get_next_free_slot(heap, bin_num, p);
 
 #ifdef __SANITIZE_ADDRESS__
-		ASAN_UNPOISON_MEMORY_REGION(p, 8);
-		ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
+		ZASAN_UNPOISON_MEMORY_REGION(p, 8);
+		ZASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
 #endif
 
 		printf("Returning slot %p, bin %d, value %ld\n", p, bin_num, (uint64_t) p);
