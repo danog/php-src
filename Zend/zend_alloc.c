@@ -1417,7 +1417,7 @@ static zend_always_inline void *zend_mm_alloc_small(zend_mm_heap *heap, int bin_
 		heap->free_slot[bin_num] = zend_mm_get_next_free_slot(heap, bin_num, p);
 
 #ifdef __SANITIZE_ADDRESS__
-		ZASAN_UNPOISON_MEMORY_REGION(bin, bin_data_size[bin_num]);
+		ZASAN_UNPOISON_MEMORY_REGION(p, bin_data_size[bin_num]);
 #endif
 
 		printf("Returning slot %p, size %d, value %ld\n", p, bin_data_size[bin_num], (uint64_t) p);
