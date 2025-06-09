@@ -182,13 +182,13 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 		if (UNEXPECTED(ptr % 8)) { \
 			zend_mm_panic("Wrong alignment"); \
 		} \
-	ASAN_POISION_MEMORY_REGION(ptr, size);\
+	ASAN_POISON_MEMORY_REGION(ptr, size);\
 } while (0);
 #define ZASAN_UNPOISON_MEMORY_REGION(ptr, size) do { \
 		if (UNEXPECTED(ptr % 8)) { \
 			zend_mm_panic("Wrong alignment"); \
 		} \
-	ASAN_UNPOISION_MEMORY_REGION(ptr, size);\
+	ASAN_UNPOISON_MEMORY_REGION(ptr, size);\
 } while (0);
 
 #endif
