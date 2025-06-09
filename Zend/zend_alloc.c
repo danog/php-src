@@ -774,7 +774,7 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 			zend_mm_hugepage(ptr, size);
 		}
 #ifdef __SANITIZE_ADDRESS__
-		ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+		ZASAN_POISON_MEMORY_REGION(ptr, size);
 #endif
 		return ptr;
 	} else {
@@ -816,7 +816,7 @@ static void *zend_mm_chunk_alloc_int(size_t size, size_t alignment)
 			zend_mm_hugepage(ptr, size);
 		}
 # ifdef __SANITIZE_ADDRESS__
-		ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+		ZASAN_POISON_MEMORY_REGION(ptr, size);
 # endif
 #endif
 		return ptr;
@@ -843,6 +843,7 @@ static void zend_mm_chunk_free(zend_mm_heap *heap, void *addr, size_t size)
 		return;
 	}
 #endif
+	ZASAN_UNPOISON_MEMORY_REGION(addr, size);
 	zend_mm_munmap(addr, size);
 }
 
@@ -894,6 +895,7 @@ static int zend_mm_chunk_extend(zend_mm_heap *heap, void *addr, size_t old_size,
 
 static zend_always_inline void zend_mm_chunk_init(zend_mm_heap *heap, zend_mm_chunk *chunk)
 {
+	ZASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 	chunk->heap = heap;
 	chunk->next = heap->main_chunk;
 	chunk->prev = heap->main_chunk->prev;
@@ -1009,6 +1011,8 @@ get_chunk:
 			if (heap->cached_chunks) {
 				heap->cached_chunks_count--;
 				chunk = heap->cached_chunks;
+				ZASAN_UNPOISON_MEMORY_REGION(chunk, ZEND_MM_CHUNK_SIZE);
+
 				heap->cached_chunks = chunk->next;
 			} else {
 #if ZEND_MM_LIMIT
@@ -1130,6 +1134,7 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 		heap->cached_chunks_count++;
 		chunk->next = heap->cached_chunks;
 		heap->cached_chunks = chunk;
+		ZASAN_POISON_MEMORY_REGION(chunk, ZEND_MM_CHUNK_SIZE);
 	} else {
 #if ZEND_MM_STAT || ZEND_MM_LIMIT
 		heap->real_size -= ZEND_MM_CHUNK_SIZE;
@@ -1146,6 +1151,7 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 			zend_mm_chunk_free(heap, chunk, ZEND_MM_CHUNK_SIZE);
 		} else {
 //TODO: select the best chunk to delete???
+			ZASAN_UNPOISON_MEMORY_REGION(heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
 			chunk->next = heap->cached_chunks->next;
 			zend_mm_chunk_free(heap, heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
 			heap->cached_chunks = chunk;
@@ -1857,6 +1863,9 @@ static void zend_mm_add_huge_block(zend_mm_heap *heap, void *ptr, size_t size, s
 static void zend_mm_add_huge_block(zend_mm_heap *heap, void *ptr, size_t size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 #endif
 {
+	//tmp
+	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+
 	zend_mm_huge_list *list = (zend_mm_huge_list*)zend_mm_alloc_heap(heap, sizeof(zend_mm_huge_list) ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 	list->ptr = ptr;
 	list->size = size;
@@ -2037,6 +2046,8 @@ static void zend_mm_init_key(zend_mm_heap *heap)
 static zend_mm_heap *zend_mm_init(void)
 {
 	zend_mm_chunk *chunk = (zend_mm_chunk*)zend_mm_chunk_alloc_int(ZEND_MM_CHUNK_SIZE, ZEND_MM_CHUNK_SIZE);
+	ZASAN_UNPOISON_MEMORY_REGION(chunk, ZEND_MM_CHUNK_SIZE);
+
 	zend_mm_heap *heap;
 
 	if (UNEXPECTED(chunk == NULL)) {
