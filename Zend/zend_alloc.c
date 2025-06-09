@@ -1271,6 +1271,11 @@ static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, ui
 
 	ZEND_MM_ASSERT(bin_data_size[bin_num] >= ZEND_MM_MIN_USEABLE_BIN_SIZE);
 
+#ifdef __SANITIZE_ADDRESS__
+	ASAN_UNPOISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
+	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), sizeof(zend_mm_free_slot*));
+#endif
+
 	slot->next_free_slot = next;
 	ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num) = zend_mm_encode_free_slot(heap, next);
 
@@ -1282,6 +1287,8 @@ static zend_always_inline void zend_mm_set_next_free_slot(zend_mm_heap *heap, ui
 
 static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot* slot)
 {
+	printf("get_next_free_slot: slot %p, bin_num: %d\n", slot, bin_num);
+
 #ifdef __SANITIZE_ADDRESS__
 	ASAN_UNPOISON_MEMORY_REGION(slot, sizeof(zend_mm_free_slot*));
 	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(slot, bin_num), sizeof(zend_mm_free_slot*));
