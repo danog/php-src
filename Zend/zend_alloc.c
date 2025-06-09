@@ -1302,7 +1302,7 @@ static zend_always_inline void zend_mm_set_next_free_slot(const char *from, zend
 
 static zend_always_inline zend_mm_free_slot *zend_mm_get_next_free_slot(zend_mm_heap *heap, uint32_t bin_num, zend_mm_free_slot* slot)
 {
-	printf("get_next_free_slot: slot %p, bin_num: %d\n", slot, bin_num);
+	printf("get_next_free_slot: slot %p, size: %d\n", slot, bin_data_size[bin_num]);
 
 #ifdef __SANITIZE_ADDRESS__
 	ZASAN_UNPOISON_MEMORY_REGION(slot, 8);
@@ -1384,7 +1384,7 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 			dbg->size = 0;
 		} while (0);
 #endif
-	printf("poison final: slot %p,  bin_num: %d\n", p, bin_num);
+	printf("poison final: slot %p, size: %d\n", p, bin_data_size[bin_num]);
 
 #ifdef __SANITIZE_ADDRESS__
 	ZASAN_POISON_MEMORY_REGION(p, 8);
