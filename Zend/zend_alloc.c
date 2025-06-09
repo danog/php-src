@@ -1373,6 +1373,10 @@ static zend_never_inline void *zend_mm_alloc_small_slow(zend_mm_heap *heap, uint
 #ifdef __SANITIZE_ADDRESS__
 	ASAN_POISON_MEMORY_REGION(p, 8);
 	ASAN_POISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(p, bin_num), 8);
+
+	ASAN_UNPOISON_MEMORY_REGION(bin, 8);
+	ASAN_UNPOISON_MEMORY_REGION(&ZEND_MM_FREE_SLOT_PTR_SHADOW(bin, bin_num), 8);
+
 #endif
 
 	/* return first element */
