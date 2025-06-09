@@ -1739,8 +1739,8 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					if (old_bin_num > 0 && size < bin_data_size[old_bin_num - 1]) {
 						/* truncation */
 						ret = zend_mm_alloc_small(heap, ZEND_MM_SMALL_SIZE_TO_BIN(size) ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
-						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 						copy_size = use_copy_size ? MIN(size, copy_size) : size;
+						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 						memcpy(ret, ptr, copy_size);
 						zend_mm_free_small(heap, ptr, old_bin_num);
 					} else {
@@ -1755,8 +1755,8 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						size_t orig_peak = heap->peak;
 #endif
 						ret = zend_mm_alloc_small(heap, ZEND_MM_SMALL_SIZE_TO_BIN(size) ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
-						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 						copy_size = use_copy_size ? MIN(old_size, copy_size) : old_size;
+						ZASAN_UNPOISON_MEMORY_REGION(ret, copy_size);
 						memcpy(ret, ptr, copy_size);
 						zend_mm_free_small(heap, ptr, old_bin_num);
 #if ZEND_MM_STAT
