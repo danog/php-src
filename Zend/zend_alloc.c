@@ -1535,11 +1535,13 @@ static zend_always_inline void *zend_mm_alloc_heap(zend_mm_heap *heap, size_t si
 		ptr = zend_mm_alloc_huge(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 	}
 	ZASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	printf("Allocated %zu bytes at %p\n", size, ptr);
 	return ptr;
 }
 
 static zend_always_inline void zend_mm_free_heap(zend_mm_heap *heap, void *ptr ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
+	printf("Freeing %p\n", ptr);
 	size_t page_offset = ZEND_MM_ALIGNED_OFFSET(ptr, ZEND_MM_CHUNK_SIZE);
 
 	if (UNEXPECTED(page_offset == 0)) {
@@ -1698,6 +1700,8 @@ static zend_never_inline void *zend_mm_realloc_huge(zend_mm_heap *heap, void *pt
 
 static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *ptr, size_t size, bool use_copy_size, size_t copy_size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
+	printf("Reallocating %zu bytes at %p\n", size, ptr);
+
 	size_t page_offset;
 	size_t old_size;
 	size_t new_size;
