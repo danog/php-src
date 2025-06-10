@@ -2769,12 +2769,15 @@ ZEND_API bool is_zend_ptr(const void *ptr)
 #if ZEND_MM_CUSTOM
 # define ZEND_MM_CUSTOM_ALLOCATOR(size) do { \
 		if (UNEXPECTED(AG(mm_heap)->use_custom_heap)) { \
-			return AG(mm_heap)->custom_heap._malloc(size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
+			void *ret = AG(mm_heap)->custom_heap._malloc(size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
+			ZEND_ASAN_POISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap)); \
+			return ret; \
 		} \
 	} while (0)
 # define ZEND_MM_CUSTOM_DEALLOCATOR(ptr) do { \
 		if (UNEXPECTED(AG(mm_heap)->use_custom_heap)) { \
 			AG(mm_heap)->custom_heap._free(ptr ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
+			ZEND_ASAN_POISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap)); \
 			return; \
 		} \
 	} while (0)
@@ -2785,11 +2788,11 @@ ZEND_API bool is_zend_ptr(const void *ptr)
 
 # define _ZEND_BIN_ALLOCATOR(_num, _size, _elements, _pages, _min_size, y) \
 	ZEND_API void* ZEND_FASTCALL _emalloc_ ## _size(void) { \
+		ZEND_ASAN_UNPOISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap)); \
 		ZEND_MM_CUSTOM_ALLOCATOR(_size); \
 		if (_size < _min_size) { \
 			return _emalloc_ ## _min_size(); \
 		} \
-		ZEND_ASAN_UNPOISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap)); \
 		void *ptr = zend_mm_alloc_small(AG(mm_heap), _num ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC); \
 		ZEND_ASAN_POISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap)); \
 		ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, _size); \
