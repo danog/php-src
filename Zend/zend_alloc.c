@@ -1767,10 +1767,12 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, copy_size);
 						memcpy(ret, ptr, copy_size);
 						zend_mm_free_small(heap, ptr, old_bin_num);
+						printf("Reallocated (2, 1) %zu bytes from %p to %p\n", size, ptr, ret);
 					} else {
 						/* reallocation in-place */
-						ZEND_ASAN_UNPOISON_MEMORY_REGION(ret, size);
 						ret = ptr;
+						ZEND_ASAN_UNPOISON_MEMORY_REGION(ret, size);
+						printf("Reallocated (2, 2) %zu bytes from %p to %p\n", size, ptr, ret);
 					}
 				} else if (size <= ZEND_MM_MAX_SMALL_SIZE) {
 					/* small extension */
@@ -1789,6 +1791,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						heap->peak = MAX(orig_peak, heap->size);
 					} while (0);
 #endif
+					printf("Reallocated (2, 3) %zu bytes from %p to %p\n", size, ptr, ret);
 				} else {
 					/* slow reallocation */
 					break;
@@ -1803,7 +1806,6 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 				dbg->orig_lineno = __zend_orig_lineno;
 #endif
 				ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
-				printf("Reallocated (2) %zu bytes from %p to %p\n", size, ptr, ret);
 				return ret;
 			}  while (0);
 
