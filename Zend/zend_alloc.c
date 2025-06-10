@@ -1720,6 +1720,8 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 		}
 	} else {
 		zend_mm_chunk *chunk = (zend_mm_chunk*)ZEND_MM_ALIGNED_BASE(ptr, ZEND_MM_CHUNK_SIZE);
+		ZEND_ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
+
 		int page_num = (int)(page_offset / ZEND_MM_PAGE_SIZE);
 		zend_mm_page_info info = chunk->map[page_num];
 #if ZEND_MM_HEAP_PROTECTION
@@ -1783,6 +1785,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 				dbg->lineno = __zend_lineno;
 				dbg->orig_lineno = __zend_orig_lineno;
 #endif
+				ZEND_ASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 				return ret;
 			}  while (0);
 
@@ -1800,6 +1803,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					dbg->lineno = __zend_lineno;
 					dbg->orig_lineno = __zend_orig_lineno;
 #endif
+					ZEND_ASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 					return ptr;
 				} else if (new_size < old_size) {
 					/* free tail pages */
@@ -1822,6 +1826,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					dbg->lineno = __zend_lineno;
 					dbg->orig_lineno = __zend_orig_lineno;
 #endif
+					ZEND_ASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 					return ptr;
 				} else /* if (new_size > old_size) */ {
 					int new_pages_count = (int)(new_size / ZEND_MM_PAGE_SIZE);
@@ -1850,6 +1855,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						dbg->lineno = __zend_lineno;
 						dbg->orig_lineno = __zend_orig_lineno;
 #endif
+						ZEND_ASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 						return ptr;
 					}
 				}
@@ -1858,6 +1864,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 #if ZEND_DEBUG
 		size = real_size;
 #endif
+		ZEND_ASAN_POISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
 	}
 
 	copy_size = MIN(old_size, copy_size);
