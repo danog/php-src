@@ -1824,7 +1824,8 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					dbg->orig_lineno = __zend_orig_lineno;
 #endif
 					ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
-					printf("Reallocated (3) %zu bytes from %p to %p\n", size, ptr, ptr);
+					ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+					printf("Reallocated (3) %zu => %zu bytes from %p to %p\n", old_size, size, ptr, ptr);
 					return ptr;
 				} else if (new_size < old_size) {
 					/* free tail pages */
