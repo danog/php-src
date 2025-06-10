@@ -1714,8 +1714,6 @@ static zend_never_inline void *zend_mm_realloc_huge(zend_mm_heap *heap, void *pt
 
 static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *ptr, size_t size, bool use_copy_size, size_t copy_size ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
-	printf("Reallocating %zu bytes at %p\n", size, ptr);
-
 	size_t page_offset;
 	size_t old_size;
 	size_t new_size;
@@ -1727,10 +1725,12 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 	page_offset = ZEND_MM_ALIGNED_OFFSET(ptr, ZEND_MM_CHUNK_SIZE);
 	if (UNEXPECTED(page_offset == 0)) {
 		if (EXPECTED(ptr == NULL)) {
-			return _zend_mm_alloc(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+			ret = _zend_mm_alloc(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 		} else {
-			return zend_mm_realloc_huge(heap, ptr, size, copy_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+			ret = zend_mm_realloc_huge(heap, ptr, size, copy_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 		}
+		printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ret);
+		return ret;
 	} else {
 		zend_mm_chunk *chunk = (zend_mm_chunk*)ZEND_MM_ALIGNED_BASE(ptr, ZEND_MM_CHUNK_SIZE);
 		ZEND_ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(zend_mm_chunk));
@@ -1801,6 +1801,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 				dbg->orig_lineno = __zend_orig_lineno;
 #endif
 				ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
+				printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ret);
 				return ret;
 			}  while (0);
 
@@ -1819,6 +1820,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					dbg->orig_lineno = __zend_orig_lineno;
 #endif
 					ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
+					printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ptr);
 					return ptr;
 				} else if (new_size < old_size) {
 					/* free tail pages */
@@ -1842,6 +1844,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 					dbg->orig_lineno = __zend_orig_lineno;
 #endif
 					ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
+					printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ptr);
 					return ptr;
 				} else /* if (new_size > old_size) */ {
 					int new_pages_count = (int)(new_size / ZEND_MM_PAGE_SIZE);
@@ -1871,6 +1874,7 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 						dbg->orig_lineno = __zend_orig_lineno;
 #endif
 						ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
+						printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ptr);
 						return ptr;
 					}
 				}
@@ -1883,7 +1887,9 @@ static zend_always_inline void *zend_mm_realloc_heap(zend_mm_heap *heap, void *p
 	}
 
 	copy_size = MIN(old_size, copy_size);
-	return zend_mm_realloc_slow(heap, ptr, size, copy_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+	ret = zend_mm_realloc_slow(heap, ptr, size, copy_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+	printf("Reallocated %zu bytes from %p to %p\n", size, ptr, ret);
+	return ret;
 }
 
 /*********************/
