@@ -2058,13 +2058,11 @@ static void *zend_mm_alloc_huge(zend_mm_heap *heap, size_t size ZEND_FILE_LINE_D
 #endif
 	return ptr;
 }
-#include <execinfo.h> 
 
 static void zend_mm_free_huge(zend_mm_heap *heap, void *ptr ZEND_FILE_LINE_DC ZEND_FILE_LINE_ORIG_DC)
 {
 	printf("Freeing huge %p\n", ptr);
-    void *buffer[1000];
-	backtrace_symbols_fd(buffer, 1000, 1);
+	abort();
 
 	size_t size;
 
