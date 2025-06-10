@@ -1617,6 +1617,7 @@ static zend_never_inline void *zend_mm_realloc_slow(zend_mm_heap *heap, void *pt
 		size_t orig_peak = heap->peak;
 #endif
 		ret = zend_mm_alloc_heap(heap, size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
+		ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, copy_size);
 		memcpy(ret, ptr, copy_size);
 		zend_mm_free_heap(heap, ptr ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 #if ZEND_MM_STAT
