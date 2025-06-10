@@ -3240,9 +3240,9 @@ ZEND_API zend_mm_heap *zend_mm_get_heap(void)
 ZEND_API bool zend_mm_is_custom_heap(zend_mm_heap *new_heap)
 {
 #if ZEND_MM_CUSTOM
-	ZEND_ASAN_UNPOISON_MEMORY_REGION(heap, sizeof(zend_mm_heap));
+	ZEND_ASAN_UNPOISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap));
 	bool ret = AG(mm_heap)->use_custom_heap;
-	ZEND_ASAN_POISON_MEMORY_REGION(heap, sizeof(zend_mm_heap));
+	ZEND_ASAN_POISON_MEMORY_REGION(AG(mm_heap), sizeof(zend_mm_heap));
 	return ret;
 #else
 	return 0;
@@ -3306,7 +3306,7 @@ ZEND_API void zend_mm_get_custom_handlers_ex(zend_mm_heap *heap,
                                              void   (**_shutdown)(bool, bool))
 {
 #if ZEND_MM_CUSTOM
-	ZEND_ASAN_UNPOISON_MEMORY_REGION(_heap, sizeof(zend_mm_heap));
+	ZEND_ASAN_UNPOISON_MEMORY_REGION(heap, sizeof(zend_mm_heap));
 
 	zend_mm_heap *_heap = (zend_mm_heap*)heap;
 
