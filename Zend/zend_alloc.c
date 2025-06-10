@@ -2184,6 +2184,7 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 			chunk->map[page_num] = ZEND_MM_SRUN_EX(i, free_counter);
 
 			ZEND_ASAN_POISON_CHUNK_HEADER_NOT_HEAP(chunk, heap);
+			printf("Getting next slot from %p during GC\n", p);
 			p = zend_mm_get_next_free_slot(heap, i, p);
 		}
 
@@ -2214,6 +2215,7 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 			ZEND_MM_ASSERT(ZEND_MM_SRUN_BIN_NUM(info) == i);
 			if (ZEND_MM_SRUN_FREE_COUNTER(info) == bin_elements[i]) {
 				/* remove from cache */
+				printf("Getting next slot from %p during GC (2)\n", p);
 				p = zend_mm_get_next_free_slot(heap, i, p);
 				if (q == (zend_mm_free_slot*)&heap->free_slot[i]) {
 					q->next_free_slot = p;
@@ -2225,6 +2227,7 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 				if (q == (zend_mm_free_slot*)&heap->free_slot[i]) {
 					p = q->next_free_slot;
 				} else {
+					printf("Getting next slot from %p during GC (3)\n", q);
 					p = zend_mm_get_next_free_slot(heap, i, q);
 				}
 			}
