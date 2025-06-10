@@ -1660,7 +1660,6 @@ static zend_never_inline void *zend_mm_realloc_huge(zend_mm_heap *heap, void *pt
 			zend_mm_change_huge_block_size(heap, ptr, new_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 #endif
 			ZEND_ASAN_POISON_MEMORY_REGION(ptr, new_size);
-			ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, size);
 			return ptr;
 		} else if (new_size < old_size) {
 			/* unmup tail */
@@ -1677,7 +1676,6 @@ static zend_never_inline void *zend_mm_realloc_huge(zend_mm_heap *heap, void *pt
 				zend_mm_change_huge_block_size(heap, ptr, new_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 #endif
 				ZEND_ASAN_POISON_MEMORY_REGION(ptr, old_size);
-				ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, size);
 				return ptr;
 			}
 		} else /* if (new_size > old_size) */ {
@@ -1711,7 +1709,6 @@ static zend_never_inline void *zend_mm_realloc_huge(zend_mm_heap *heap, void *pt
 				zend_mm_change_huge_block_size(heap, ptr, new_size ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
 #endif
 				ZEND_ASAN_POISON_MEMORY_REGION(ptr, new_size);
-				ZEND_ASAN_UNPOISON_MEMORY_REGION(ptr, size);
 
 				return ptr;
 			}
