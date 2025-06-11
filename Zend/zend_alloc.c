@@ -3449,7 +3449,7 @@ ZEND_API zend_mm_storage *zend_mm_get_storage(zend_mm_heap *heap)
 	ZEND_ASAN_POISON_MEMORY_REGION(heap, sizeof(zend_mm_heap));
 	return ret;
 #else
-	return NULL
+	return NULL;
 #endif
 }
 

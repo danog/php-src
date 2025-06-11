@@ -12,12 +12,17 @@ PHP                                                                        NEWS
     released on bailout). (DanielEScherzer and ilutov)
   . Fixed GH-18695 (zend_ast_export() - float number is not preserved).
     (Oleg Efimov)
+  . Fix handling of references in zval_try_get_long(). (nielsdos)
 
 - Curl:
   . Fix memory leak when setting a list via curl_setopt fails. (nielsdos)
 
 - Date:
   . Fix leaks with multiple calls to DatePeriod iterator current(). (nielsdos)
+
+- DOM:
+  . Fixed bug GH-18744 (classList works not correctly if copy HTMLElement by
+    clone keyword). (nielsdos)
 
 - FPM:
   . Fixed GH-18662 (fpm_get_status segfault). (txuna)
@@ -29,6 +34,8 @@ PHP                                                                        NEWS
 - OpenSSL:
   . Fix memory leak of X509_STORE in php_openssl_setup_verify() on failure.
     (nielsdos)
+  . Fixed bug #74796 (Requests through http proxy set peer name).
+    (Jakub Zelenka)
 
 - Phar:
   . Add missing filter cleanups on phar failure. (nielsdos)
@@ -55,6 +62,7 @@ PHP                                                                        NEWS
 
 - Tidy:
   . Fix memory leak in tidy output handler on error. (nielsdos)
+  . Fix tidyOptIsReadonly deprecation, using tidyOptGetCategory. (David Carlier)
 
 06 Jun 2025, PHP 8.4.8
 
