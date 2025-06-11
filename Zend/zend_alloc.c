@@ -3176,10 +3176,12 @@ ZEND_API size_t zend_memory_peak_usage(bool real_usage)
 		ZEND_MM_UNPOISON_HEAP(AG(mm_heap));
 		ret = AG(mm_heap)->real_peak;
 		ZEND_MM_POISON_HEAP(AG(mm_heap));
+		return ret;
 	} else {
 		ZEND_MM_UNPOISON_HEAP(AG(mm_heap));
 		ret = AG(mm_heap)->peak;
 		ZEND_MM_POISON_HEAP(AG(mm_heap));
+		return ret;
 	}
 #endif
 	return 0;
