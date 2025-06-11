@@ -1169,10 +1169,10 @@ found:
 		chunk->next->prev = chunk->prev;
 		ZEND_MM_UNPOISON_CHUNK_HDR(heap->main_chunk);
 		chunk->next = heap->main_chunk->next;
-		ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 		chunk->prev = heap->main_chunk;
 		chunk->prev->next = chunk;
 		chunk->next->prev = chunk;
+		ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 	}
 	/* mark run as allocated */
 	chunk->free_pages -= pages_count;
