@@ -113,12 +113,16 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 //zend_mm_validate(zend_mm_get_heap());
 //puts("Post flags OK\n");
 
+					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
 
 //zend_mm_validate(zend_mm_get_heap());
 //puts("Pre validation OK\n");
 
 						obj->handlers->free_obj(obj);
+					} else {
+						printf("Skipping free on %p during free_object_storage\n", obj);
+					}
 
 //zend_mm_validate(zend_mm_get_heap());
 //puts("Post validation OK\n");
