@@ -199,6 +199,8 @@ void zend_weakrefs_init(void) {
 /* This is called when the object is garbage collected
  * to remove all WeakReference and WeakMap entries weakly referencing that object. */
 void zend_weakrefs_notify(zend_object *object) {
+	printf("Notify from %p\n", object);
+
 	/* Annoyingly we can't use the HT destructor here, because we need access to the key (which
 	 * is the object address), which is not provided to the dtor. */
 	const zend_ulong obj_key = zend_object_to_weakref_key(object);
