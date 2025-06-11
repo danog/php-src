@@ -1151,8 +1151,9 @@ get_chunk:
 			len = ZEND_MM_PAGES - ZEND_MM_FIRST_PAGE;
 			goto found;
 		} else {
+			zend_mm_chunk *next_chunk = chunk->next;
 			ZEND_MM_POISON_CHUNK_HDR(chunk, heap);
-			chunk = chunk->next;
+			chunk = next_chunk;
 			ZEND_MM_UNPOISON_CHUNK_HDR(chunk);
 			steps++;
 		}
@@ -2330,8 +2331,9 @@ ZEND_API size_t zend_mm_gc(zend_mm_heap *heap)
 			chunk = next_chunk;
 			ZEND_MM_UNPOISON_CHUNK_HDR(chunk);
 		} else {
+			zend_mm_chunk *next_chunk = chunk->next;
 			ZEND_MM_POISON_CHUNK_HDR(chunk, heap);
-			chunk = chunk->next;
+			chunk = next_chunk;
 			ZEND_MM_UNPOISON_CHUNK_HDR(chunk);
 		}
 	} while (chunk != heap->main_chunk);
