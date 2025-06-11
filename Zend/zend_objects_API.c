@@ -120,6 +120,8 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 //puts("Pre validation OK\n");
 
 						obj->handlers->free_obj(obj);
+					} else {
+						printf("Skipping free on %p during free_object_storage\n", obj);
 					}
 
 //zend_mm_validate(zend_mm_get_heap());
