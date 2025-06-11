@@ -1217,7 +1217,7 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 		heap->cached_chunks_count++;
 		chunk->next = heap->cached_chunks;
 		heap->cached_chunks = chunk;
-		ZEND_MM_POISON_CHUNK(chunk);
+		ZEND_MM_POISON_CHUNK(chunk, heap);
 	} else {
 #if ZEND_MM_STAT || ZEND_MM_LIMIT
 		heap->real_size -= ZEND_MM_CHUNK_SIZE;
@@ -1239,7 +1239,7 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 			chunk->next = heap->cached_chunks->next;
 			zend_mm_chunk_free(heap, heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
 			heap->cached_chunks = chunk;
-			ZEND_MM_POISON_CHUNK(chunk);
+			ZEND_MM_POISON_CHUNK(chunk, heap);
 		}
 	}
 }
@@ -2593,7 +2593,7 @@ ZEND_API void zend_mm_shutdown(zend_mm_heap *heap, bool full, bool silent)
 		heap->chunks_count--;
 		heap->cached_chunks_count++;
 	}
-	ZEND_MM_POISON_CHUNK_HDR(p);
+	ZEND_MM_POISON_CHUNK_HDR(p, heap);
 
 
 	if (full) {
