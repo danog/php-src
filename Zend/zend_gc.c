@@ -2049,6 +2049,7 @@ rerun_gc:
 						GC_ADDREF(obj);
 						obj->handlers->free_obj(obj);
 						GC_DELREF(obj);
+						printf("Invoking free on %p inside GC\n", obj);
 					}
 
 					ZEND_OBJECTS_STORE_ADD_TO_FREE_LIST(obj->handle);

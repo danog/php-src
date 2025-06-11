@@ -136,6 +136,7 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 					GC_ADDREF(obj);
 					obj->handlers->free_obj(obj);
+					printf("Invoking free on %p\n", obj);
 				}
 			}
 		} while (obj_ptr != end);
