@@ -408,14 +408,14 @@ ZEND_COLD void zend_debug_alloc_output(char *format, ...)
 #ifdef ZEND_WIN32
 	OutputDebugString(output_buf);
 #else
-	fprintf((stderr, "%s", output_buf);
+	fprintf(stderr, "%s", output_buf);
 #endif
 }
 #endif
 
 static ZEND_COLD ZEND_NORETURN void zend_mm_panic(const char *message)
 {
-	fprintf((stderr, "%s\n", message);
+	fprintf(stderr, "%s\n", message);
 /* See http://support.microsoft.com/kb/190351 */
 #ifdef ZEND_WIN32
 	fflush(stderr);
@@ -459,10 +459,10 @@ static void stderr_last_error(char *msg)
 	char *buf = php_win32_error_to_msg(err);
 
 	if (!buf[0]) {
-		fprintf((stderr, "\n%s: [0x%08lx]\n", msg, err);
+		fprintf(stderr, "\n%s: [0x%08lx]\n", msg, err);
 	}
 	else {
-		fprintf((stderr, "\n%s: [0x%08lx] %s\n", msg, err, buf);
+		fprintf(stderr, "\n%s: [0x%08lx] %s\n", msg, err, buf);
 	}
 
 	php_win32_error_msg_free(buf);
@@ -504,7 +504,7 @@ static void zend_mm_munmap(void *addr, size_t size)
 #else
 	if (munmap(addr, size) != 0) {
 #if ZEND_MM_ERROR
-		fprintf((stderr, "\nmunmap() failed: [%d] %s\n", errno, strerror(errno));
+		fprintf(stderr, "\nmunmap() failed: [%d] %s\n", errno, strerror(errno));
 #endif
 	}
 #endif
@@ -540,7 +540,7 @@ static void *zend_mm_mmap_fixed(void *addr, size_t size)
 
 	if (ptr == MAP_FAILED) {
 #if ZEND_MM_ERROR && !defined(MAP_EXCL) && !defined(MAP_TRYFIXED)
-		fprintf((stderr, "\nmmap() fixed failed: [%d] %s\n", errno, strerror(errno));
+		fprintf(stderr, "\nmmap() fixed failed: [%d] %s\n", errno, strerror(errno));
 #endif
 		return NULL;
 	} else if (ptr != addr) {
@@ -588,7 +588,7 @@ static void *zend_mm_mmap(size_t size)
 
 	if (ptr == MAP_FAILED) {
 #if ZEND_MM_ERROR
-		fprintf((stderr, "\nmmap() failed: [%d] %s\n", errno, strerror(errno));
+		fprintf(stderr, "\nmmap() failed: [%d] %s\n", errno, strerror(errno));
 #endif
 		return NULL;
 	}
@@ -2097,7 +2097,7 @@ static zend_mm_heap *zend_mm_init(void)
 
 	if (UNEXPECTED(chunk == NULL)) {
 #if ZEND_MM_ERROR
-		fprintf((stderr, "Can't initialize heap\n");
+		fprintf(stderr, "Can't initialize heap\n");
 #endif
 		return NULL;
 	}
@@ -3161,7 +3161,7 @@ ZEND_API void shutdown_memory_manager(bool silent, bool full_shutdown)
 
 static ZEND_COLD ZEND_NORETURN void zend_out_of_memory(void)
 {
-	fprintf((stderr, "Out of memory\n");
+	fprintf(stderr, "Out of memory\n");
 	exit(1);
 }
 
@@ -3470,7 +3470,7 @@ ZEND_API zend_mm_heap *zend_mm_startup_ex(const zend_mm_handlers *handlers, void
 	chunk = (zend_mm_chunk*)handlers->chunk_alloc(&tmp_storage, ZEND_MM_CHUNK_SIZE, ZEND_MM_CHUNK_SIZE);
 	if (UNEXPECTED(chunk == NULL)) {
 #if ZEND_MM_ERROR
-		fprintf((stderr, "Can't initialize heap\n");
+		fprintf(stderr, "Can't initialize heap\n");
 #endif
 		return NULL;
 	}
@@ -3515,7 +3515,7 @@ ZEND_API zend_mm_heap *zend_mm_startup_ex(const zend_mm_handlers *handlers, void
 	if (!storage) {
 		handlers->chunk_free(&tmp_storage, chunk, ZEND_MM_CHUNK_SIZE);
 #if ZEND_MM_ERROR
-		fprintf((stderr, "Can't initialize heap\n");
+		fprintf(stderr, "Can't initialize heap\n");
 #endif
 		return NULL;
 	}
