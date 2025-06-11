@@ -206,8 +206,6 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 	ZEND_MM_UNPOISON_HEAP((_heap)); \
 } while (0);
 
-#define ZEND_MM_UNPOISON_CHUNK(_ptr) ZEND_MM_UNPOISON((_ptr), ZEND_MM_CHUNK_SIZE);
-
 #else
 
 #define ZEND_MM_POISON
@@ -217,7 +215,6 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 #define ZEND_MM_POISON_CHUNK_HDR
 #define ZEND_MM_UNPOISON_CHUNK_HDR
 #define ZEND_MM_POISON_CHUNK
-#define ZEND_MM_UNPOISON_CHUNK
 
 #endif
 typedef uint32_t   zend_mm_page_info; /* 4-byte integer */
