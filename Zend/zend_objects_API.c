@@ -215,6 +215,10 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_del(zend_object *object) /* {{{ *
 			object->handlers->free_obj(object);
 			printf("Freeing %p and invoking free\n", object);
 		} else {
+						GC_ADD_FLAGS(object, IS_OBJ_FREE_CALLED);
+			GC_SET_REFCOUNT(object, 1);
+			object->handlers->free_obj(object);
+
 			printf("Freeing %p without invoking free\n", object);
 		}
 		ptr = ((char*)object) - object->handlers->offset;
