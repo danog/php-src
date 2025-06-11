@@ -1147,6 +1147,7 @@ get_chunk:
 			}
 			ZEND_MM_UNPOISON_CHUNK_HDR(chunk);
 			zend_mm_chunk_init(heap, chunk);
+			ZEND_MM_UNPOISON_CHUNK_HDR(chunk);
 			page_num = ZEND_MM_FIRST_PAGE;
 			len = ZEND_MM_PAGES - ZEND_MM_FIRST_PAGE;
 			goto found;
