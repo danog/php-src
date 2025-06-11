@@ -247,13 +247,6 @@ PHP_FUNCTION(var_dump)
 }
 /* }}} */
 
-/* {{{ Validates the contents of the heap */
-PHP_FUNCTION(validate_heap)
-{
-	zend_mm_validate(zend_mm_get_heap());
-}
-/* }}} */
-
 static void zval_array_element_dump(zval *zv, zend_ulong index, zend_string *key, int level) /* {{{ */
 {
 	if (key == NULL) { /* numeric key */

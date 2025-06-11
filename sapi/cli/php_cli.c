@@ -925,8 +925,6 @@ do_repeat:
 		zend_is_auto_global(ZSTR_KNOWN(ZEND_STR_AUTOGLOBAL_SERVER));
 
 		PG(during_request_startup) = 0;
-
-		zend_mm_validate(zend_mm_get_heap());
 		switch (context.mode) {
 		case PHP_CLI_MODE_STANDARD:
 			cli_register_file_handles();
@@ -936,7 +934,6 @@ do_repeat:
 			} else {
 				php_execute_script(&file_handle);
 			}
-			zend_mm_validate(zend_mm_get_heap());
 			break;
 		case PHP_CLI_MODE_LINT:
 			if (php_lint_script(&file_handle) == SUCCESS) {
@@ -1100,23 +1097,19 @@ do_repeat:
 			}
 		}
 	} zend_end_try();
-	zend_mm_validate(zend_mm_get_heap());
 
 out:
 	if (file_handle.filename) {
 		zend_destroy_file_handle(&file_handle);
 	}
-	zend_mm_validate(zend_mm_get_heap());
 	if (request_started) {
 		php_request_shutdown((void *) 0);
 		request_started = 0;
 	}
-	zend_mm_validate(zend_mm_get_heap());
 	if (translated_path) {
 		free(translated_path);
 		translated_path = NULL;
 	}
-	zend_mm_validate(zend_mm_get_heap());
 	if (context.mode == PHP_CLI_MODE_LINT && argc > php_optind && strcmp(argv[php_optind], "--")) {
 		script_file = NULL;
 		goto do_repeat;
@@ -1315,15 +1308,12 @@ exit_loop:
 		if (sapi_module == &cli_sapi_module) {
 #endif
 			exit_status = do_cli(argc, argv);
-			zend_mm_validate(zend_mm_get_heap());
 #ifndef PHP_CLI_WIN32_NO_CONSOLE
 		} else {
 			exit_status = do_cli_server(argc, argv);
 		}
-		zend_mm_validate(zend_mm_get_heap());
 #endif
 	} zend_end_try();
-	zend_mm_validate(zend_mm_get_heap());
 out:
 	if (ini_path_override) {
 		free(ini_path_override);

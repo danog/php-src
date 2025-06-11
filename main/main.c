@@ -1797,20 +1797,6 @@ static void sigchld_handler(int apar)
 /* }}} */
 #endif
 
-static void observer(zend_execute_data *execute_data)
-{
-	//zend_mm_validate(zend_mm_get_heap());
-}
-static void observer_end(zend_execute_data *execute_data, zval *retval)
-{
-	//zend_mm_validate(zend_mm_get_heap());
-}
-
-static zend_observer_fcall_handlers gc_observer(zend_execute_data *execute_data)
-{
-	return (zend_observer_fcall_handlers){observer, observer_end};
-}
-
 /* {{{ php_request_startup */
 zend_result php_request_startup(void)
 {
@@ -1898,8 +1884,6 @@ zend_result php_request_startup(void)
 /* {{{ php_request_shutdown */
 void php_request_shutdown(void *dummy)
 {
-	zend_mm_validate(zend_mm_get_heap());
-
 	bool report_memleaks;
 
 	EG(flags) |= EG_FLAGS_IN_SHUTDOWN;
@@ -1917,42 +1901,42 @@ void php_request_shutdown(void *dummy)
 	if (ZEND_OBSERVER_ENABLED) {
 		zend_observer_fcall_end_all();
 	}
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 1. Call all possible shutdown functions registered with register_shutdown_function() */
 	if (PG(modules_activated)) {
 		php_call_shutdown_functions();
 	}
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 2. Call all possible __destruct() functions */
 	zend_try {
 		zend_call_destructors();
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 3. Flush all output buffers */
 	zend_try {
 		php_output_end_all();
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 4. Reset max_execution_time (no longer executing php code after response sent) */
 	zend_try {
 		zend_unset_timeout();
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 5. Call all extensions RSHUTDOWN functions */
 	if (PG(modules_activated)) {
 		zend_deactivate_modules();
 	}
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 6. Shutdown output layer (send the set HTTP headers, cleanup output handlers, etc.) */
 	zend_try {
 		php_output_deactivate();
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 7. Free shutdown functions */
 	if (PG(modules_activated)) {
 		php_free_shutdown_functions();
 	}
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 8. Destroy super-globals */
 	zend_try {
 		int i;
@@ -1961,10 +1945,10 @@ zend_mm_validate(zend_mm_get_heap());
 			zval_ptr_dtor(&PG(http_globals)[i]);
 		}
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 9. Shutdown scanner/executor/compiler and restore ini entries */
 	zend_deactivate();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 10. free request-bound globals */
 	php_free_request_globals();
 
@@ -1987,20 +1971,18 @@ zend_mm_validate(zend_mm_get_heap());
 	zend_try {
 		php_shutdown_stream_hashes();
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* 15. Free Willy (here be crashes) */
 	zend_arena_destroy(CG(arena));
-zend_mm_validate(zend_mm_get_heap());
 	zend_interned_strings_deactivate();
-zend_mm_validate(zend_mm_get_heap());
 	zend_try {
 		shutdown_memory_manager(CG(unclean_shutdown) || !report_memleaks, 0);
 	} zend_end_try();
-zend_mm_validate(zend_mm_get_heap());
+
 	/* Reset memory limit, as the reset during INI_STAGE_DEACTIVATE may have failed.
 	 * At this point, no memory beyond a single chunk should be in use. */
-	//zend_set_memory_limit(PG(memory_limit));
-zend_mm_validate(zend_mm_get_heap());
+	zend_set_memory_limit(PG(memory_limit));
+
 	/* 16. Deactivate Zend signals */
 #ifdef ZEND_SIGNALS
 	zend_signal_deactivate();
@@ -2016,8 +1998,6 @@ zend_mm_validate(zend_mm_get_heap());
 #ifdef HAVE_DTRACE
 	DTRACE_REQUEST_SHUTDOWN(SAFE_FILENAME(SG(request_info).path_translated), SAFE_FILENAME(SG(request_info).request_uri), (char *)SAFE_FILENAME(SG(request_info).request_method));
 #endif /* HAVE_DTRACE */
-
-	zend_mm_validate(zend_mm_get_heap());
 }
 /* }}} */
 
@@ -2179,7 +2159,6 @@ zend_result php_module_startup(sapi_module_struct *sf, zend_module_entry *additi
 	gc_globals_ctor();
 
 	zend_observer_startup();
-	zend_observer_fcall_register(gc_observer);
 #if ZEND_DEBUG
 	zend_observer_error_register(report_zend_debug_error_notify_cb);
 #endif
@@ -2445,7 +2424,6 @@ int php_module_shutdown_wrapper(sapi_module_struct *sapi_globals)
 void php_module_shutdown(void)
 {
 	int module_number=0;
-	zend_mm_validate(zend_mm_get_heap());
 
 	module_shutdown = true;
 
@@ -2484,7 +2462,6 @@ void php_module_shutdown(void)
 
 #ifndef ZTS
 	zend_ini_shutdown();
-	zend_mm_validate(zend_mm_get_heap());
 	shutdown_memory_manager(CG(unclean_shutdown), 1);
 #else
 	zend_ini_global_shutdown();

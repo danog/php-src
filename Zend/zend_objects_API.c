@@ -82,7 +82,7 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_mark_destructed(zend_objects_stor
 
 ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_store *objects, bool fast_shutdown)
 {
-	zend_object **obj_ptr, **end, *obj, *obj_next;
+	zend_object **obj_ptr, **end, *obj;
 
 	if (objects->top <= 1) {
 		return;
@@ -94,41 +94,18 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 	obj_ptr = objects->object_buckets + objects->top;
 
 	if (fast_shutdown) {
-		bool first = true;
-		ptrdiff_t cnt = 1;
-		ptrdiff_t total = obj_ptr-end;
 		do {
 			obj_ptr--;
 			obj = *obj_ptr;
 			if (IS_OBJ_VALID(obj)) {
 				if (!(OBJ_FLAGS(obj) & IS_OBJ_FREE_CALLED)) {
-					printf("Freeing object %td/%td: %s\n", cnt++, total, ZSTR_VAL(obj->ce->name));
-
-//zend_mm_validate(zend_mm_get_heap());
-//puts("Pre flags OK\n");
-					
-					printf("Invoking free on %p during free_object_storage\n", obj);
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
-
-//zend_mm_validate(zend_mm_get_heap());
-//puts("Post flags OK\n");
-
 					if (obj->handlers->free_obj != zend_object_std_dtor) {
 						GC_ADDREF(obj);
-
-//zend_mm_validate(zend_mm_get_heap());
-//puts("Pre validation OK\n");
-
 						obj->handlers->free_obj(obj);
-					} else {
-						printf("Skipping free on %p during free_object_storage\n", obj);
 					}
-
-//zend_mm_validate(zend_mm_get_heap());
-//puts("Post validation OK\n");
 				}
 			}
-			first = false;
 		} while (obj_ptr != end);
 	} else {
 		do {
@@ -139,7 +116,6 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 					GC_ADDREF(obj);
 					obj->handlers->free_obj(obj);
-					printf("Invoking free on %p\n", obj);
 				}
 			}
 		} while (obj_ptr != end);
@@ -216,9 +192,6 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_del(zend_object *object) /* {{{ *
 			GC_ADD_FLAGS(object, IS_OBJ_FREE_CALLED);
 			GC_SET_REFCOUNT(object, 1);
 			object->handlers->free_obj(object);
-			printf("Freeing %p and invoking free\n", object);
-		} else {
-			printf("Freeing %p without invoking free (%d)\n", object, OBJ_FLAGS(object));
 		}
 		ptr = ((char*)object) - object->handlers->offset;
 		GC_REMOVE_FROM_BUFFER(object);
