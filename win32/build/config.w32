@@ -93,7 +93,7 @@ if (VS_TOOLSET) {
 }
 
 // General link flags
-toolset_setup_common_ldlags();
+toolset_setup_common_ldflags();
 
 // General libs
 toolset_setup_common_libs();
@@ -293,7 +293,7 @@ if (VS_TOOLSET && VCVERS >= 1914) {
 //AC_DEFINE('ZEND_DVAL_TO_LVAL_CAST_OK', 1);
 
 ADD_SOURCES("main", "main.c snprintf.c spprintf.c getopt.c fopen_wrappers.c \
-	php_ini_builder.c \
+	php_ini_builder.c php_glob.c \
 	php_scandir.c php_ini.c SAPI.c rfc1867.c php_content_types.c strlcpy.c \
 	strlcat.c reentrancy.c php_variables.c php_ticks.c network.c \
 	php_open_temporary_file.c output.c internal_functions.c \
@@ -314,7 +314,7 @@ if (VS_TOOLSET && VCVERS >= 1914) {
 	ADD_FLAG("CFLAGS_BD_MAIN_STREAMS", "/d2FuncCache1");
 }
 
-ADD_SOURCES("win32", "dllmain.c glob.c readdir.c \
+ADD_SOURCES("win32", "dllmain.c readdir.c \
 	registry.c select.c sendmail.c time.c winutil.c wsyslog.c globals.c \
 	getrusage.c ftok.c ioutil.c codepage.c nice.c \
 	fnmatch.c sockets.c console.c signal.c");
@@ -364,15 +364,28 @@ if (PHP_SECURITY_FLAGS == "yes") {
 	ADD_FLAG("LDFLAGS", "/NXCOMPAT /DYNAMICBASE ");
 }
 
-if (CLANG_TOOLSET) {
-	ARG_WITH("uncritical-warn-choke", "Disable some uncritical warnings", "yes");
-	if (PHP_UNCRITICAL_WARN_CHOKE != "no") {
-		ADD_FLAG("CFLAGS", "-Wno-ignored-attributes -Wno-deprecated-declarations -Wno-missing-braces " +
-		"-Wno-logical-op-parentheses -Wno-msvc-include -Wno-invalid-source-encoding -Wno-unknown-pragmas " +
-		"-Wno-unused-command-line-argument -Wno-unused-function -Wno-ignored-pragma-optimize");
+ARG_ENABLE("sanitizer", "Enable ASan (and UBSan) extensions", "no");
+if (PHP_SANITIZER == "yes" && PHP_DEBUG == "yes") {
+	ERROR("Use of both --enable-sanitizer and --enable-debug not allowed.");
+}
+if (PHP_SANITIZER == "yes" && PHP_DEBUG_PACK == "no") {
+	ERROR("--enable-sanitizer requires --enable-debug-pack");
+}
+if (VS_TOOLSET) {
+	if (PHP_SANITIZER == "yes") {
+		if (COMPILER_NUMERIC_VERSION < 1929) {
+			ERROR("MSVC at least 16.10 required for sanitation plugins");
+		}
 	}
+} else if (CLANG_TOOLSET) {
+	AC_DEFINE("PHP_HAVE_BUILTIN_EXPECT", 1, "Define to 1 if the compiler supports '__builtin_expect'.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SADDL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_saddl_overflow'.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SADDLL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_saddll_overflow'.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SSUBL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_ssubl_overflow'.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SSUBLL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_ssubll_overflow'.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SMULL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_smull_overflow '.");
+	AC_DEFINE("PHP_HAVE_BUILTIN_SMULLL_OVERFLOW", 1, "Define to 1 if the compiler supports '__builtin_smulll_overflow'.");
 
-	ARG_ENABLE("sanitizer", "Enable ASan and UBSan extensions", "no");
 	if (PHP_SANITIZER == "yes") {
 		if (COMPILER_NUMERIC_VERSION < 500) {
 			ERROR("Clang at least 5.0.0 required for sanitation plugins");
@@ -405,3 +418,7 @@ ARG_ENABLE("native-intrinsics", "Comma separated list of intrinsic optimizations
 	might not work properly, if the chosen instruction sets are not available on the target \
 	processor.", "no");
 toolset_setup_intrinsic_cflags();
+
+ARG_ENABLE('snapshot-build', 'Build a snapshot: turns on everything it can and ignores build errors', 'no');
+
+ARG_ENABLE('vs-link-compat', 'Allow linking of libraries built with compatible versions of VS toolset', 'yes');

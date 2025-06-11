@@ -69,10 +69,12 @@ ZEND_API zend_object *zend_throw_error_exception(zend_class_entry *exception_ce,
 
 extern ZEND_API void (*zend_throw_exception_hook)(zend_object *ex);
 
+ZEND_API zend_result zend_update_exception_properties(zend_execute_data *execute_data, zval *return_value, zend_string *message, zend_long code, zval *previous);
+
 /* show an exception using zend_error(severity,...), severity should be E_ERROR */
 ZEND_API ZEND_COLD zend_result zend_exception_error(zend_object *exception, int severity);
 ZEND_NORETURN void zend_exception_uncaught_error(const char *prefix, ...) ZEND_ATTRIBUTE_FORMAT(printf, 1, 2);
-ZEND_API zend_string *zend_trace_to_string(HashTable *trace, bool include_main);
+ZEND_API zend_string *zend_trace_to_string(const HashTable *trace, bool include_main);
 
 ZEND_API ZEND_COLD zend_object *zend_create_unwind_exit(void);
 ZEND_API ZEND_COLD zend_object *zend_create_graceful_exit(void);

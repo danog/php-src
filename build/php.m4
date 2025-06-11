@@ -1788,7 +1788,7 @@ dnl
 dnl Common setup macro for ICU.
 dnl
 AC_DEFUN([PHP_SETUP_ICU],[
-  PKG_CHECK_MODULES([ICU], [icu-uc >= 50.1 icu-io icu-i18n])
+  PKG_CHECK_MODULES([ICU], [icu-uc >= 57.1 icu-io icu-i18n])
 
   PHP_EVAL_INCLINE([$ICU_CFLAGS])
   PHP_EVAL_LIBLINE([$ICU_LIBS], [$1])
@@ -1923,7 +1923,7 @@ dnl
 dnl Common setup macro for SQLite library.
 dnl
 AC_DEFUN([PHP_SETUP_SQLITE], [
-PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.7.7], [
+PKG_CHECK_MODULES([SQLITE], [sqlite3 >= 3.7.17], [
   PHP_EVAL_INCLINE([$SQLITE_CFLAGS])
   PHP_EVAL_LIBLINE([$SQLITE_LIBS], [$1])
 ])

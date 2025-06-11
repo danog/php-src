@@ -206,6 +206,9 @@ ZEND_API HashTable *zend_std_get_debug_info(zend_object *object, int *is_temp) /
 	}
 
 	zend_call_known_instance_method_with_0_params(ce->__debugInfo, object, &retval);
+	if (UNEXPECTED(Z_ISREF(retval))) {
+		zend_unwrap_reference(&retval);
+	}
 	if (Z_TYPE(retval) == IS_ARRAY) {
 		if (!Z_REFCOUNTED(retval)) {
 			*is_temp = 1;
@@ -886,7 +889,6 @@ try_again:
 
 		if (!((*guard) & IN_ISSET)) {
 			GC_ADDREF(zobj);
-			ZVAL_UNDEF(&tmp_result);
 
 			*guard |= IN_ISSET;
 			zend_std_call_issetter(zobj, name, &tmp_result);
@@ -1689,7 +1691,7 @@ ZEND_API zend_function *zend_get_call_trampoline_func(const zend_class_entry *ce
 	func->fn_flags = ZEND_ACC_CALL_VIA_TRAMPOLINE
 		| ZEND_ACC_PUBLIC
 		| ZEND_ACC_VARIADIC
-		| (fbc->common.fn_flags & (ZEND_ACC_RETURN_REFERENCE|ZEND_ACC_ABSTRACT|ZEND_ACC_DEPRECATED));
+		| (fbc->common.fn_flags & (ZEND_ACC_RETURN_REFERENCE|ZEND_ACC_ABSTRACT|ZEND_ACC_DEPRECATED|ZEND_ACC_NODISCARD));
 	/* Attributes outlive the trampoline because they are created by the compiler. */
 	func->attributes = fbc->common.attributes;
 	if (is_static) {
@@ -1784,6 +1786,9 @@ ZEND_API zend_function *zend_get_property_hook_trampoline(
 		func = (zend_function *)(uintptr_t)ecalloc(1, sizeof(zend_internal_function));
 	}
 	func->type = ZEND_INTERNAL_FUNCTION;
+	/* This trampoline does not use the call_trampoline_op, so it won't reuse the call frame,
+	 * which means we don't even need to reserve a temporary for observers. */
+	func->common.T = 0;
 	func->common.arg_flags[0] = 0;
 	func->common.arg_flags[1] = 0;
 	func->common.arg_flags[2] = 0;
@@ -1816,7 +1821,7 @@ static zend_always_inline zend_function *zend_get_user_call_function(zend_class_
 }
 /* }}} */
 
-static ZEND_COLD zend_never_inline void zend_bad_method_call(zend_function *fbc, zend_string *method_name, zend_class_entry *scope) /* {{{ */
+ZEND_API ZEND_COLD zend_never_inline void zend_bad_method_call(zend_function *fbc, zend_string *method_name, zend_class_entry *scope) /* {{{ */
 {
 	zend_throw_error(NULL, "Call to %s method %s::%s() from %s%s",
 		zend_visibility_string(fbc->common.fn_flags), ZEND_FN_SCOPE_NAME(fbc), ZSTR_VAL(method_name),
@@ -1826,7 +1831,7 @@ static ZEND_COLD zend_never_inline void zend_bad_method_call(zend_function *fbc,
 }
 /* }}} */
 
-static ZEND_COLD zend_never_inline void zend_abstract_method_call(zend_function *fbc) /* {{{ */
+ZEND_API ZEND_COLD zend_never_inline void zend_abstract_method_call(zend_function *fbc) /* {{{ */
 {
 	zend_throw_error(NULL, "Cannot call abstract method %s::%s()",
 		ZSTR_VAL(fbc->common.scope->name), ZSTR_VAL(fbc->common.function_name));
@@ -2150,8 +2155,9 @@ ZEND_API int zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 			object_lhs = false;
 		}
 		ZEND_ASSERT(Z_TYPE_P(value) != IS_OBJECT);
-		uint8_t target_type = (Z_TYPE_P(value) == IS_FALSE || Z_TYPE_P(value) == IS_TRUE)
-								 ? _IS_BOOL : Z_TYPE_P(value);
+		uint8_t target_type = Z_TYPE_P(value);
+		/* Should be handled in zend_compare(). */
+		ZEND_ASSERT(target_type != IS_FALSE && target_type != IS_TRUE);
 		if (Z_OBJ_HT_P(object)->cast_object(Z_OBJ_P(object), &casted, target_type) == FAILURE) {
 			// TODO: Less crazy.
 			if (target_type == IS_LONG || target_type == IS_DOUBLE) {
@@ -2434,8 +2440,12 @@ ZEND_API zend_result zend_std_cast_object_tostring(zend_object *readobj, zval *w
 				zend_call_known_instance_method_with_0_params(ce->__tostring, readobj, &retval);
 				zend_object_release(readobj);
 				if (EXPECTED(Z_TYPE(retval) == IS_STRING)) {
+is_string:
 					ZVAL_COPY_VALUE(writeobj, &retval);
 					return SUCCESS;
+				} else if (Z_ISREF(retval)) {
+					zend_unwrap_reference(&retval);
+					goto is_string;
 				}
 				zval_ptr_dtor(&retval);
 				if (!EG(exception)) {
@@ -2462,17 +2472,9 @@ ZEND_API zend_result zend_std_get_closure(zend_object *obj, zend_class_entry **c
 		return FAILURE;
 	}
 	*fptr_ptr = Z_FUNC_P(func);
-
 	*ce_ptr = ce;
-	if ((*fptr_ptr)->common.fn_flags & ZEND_ACC_STATIC) {
-		if (obj_ptr) {
-			*obj_ptr = NULL;
-		}
-	} else {
-		if (obj_ptr) {
-			*obj_ptr = obj;
-		}
-	}
+	*obj_ptr = obj;
+
 	return SUCCESS;
 }
 /* }}} */

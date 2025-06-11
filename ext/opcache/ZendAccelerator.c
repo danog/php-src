@@ -46,6 +46,7 @@
 #include "zend_accelerator_util_funcs.h"
 #include "zend_accelerator_hash.h"
 #include "zend_file_cache.h"
+#include "zend_system_id.h"
 #include "ext/pcre/php_pcre.h"
 #include "ext/standard/basic_functions.h"
 
@@ -97,6 +98,8 @@ typedef int gid_t;
 #include <immintrin.h>
 #endif
 
+#include "zend_simd.h"
+
 ZEND_EXTENSION();
 
 #ifndef ZTS
@@ -135,9 +138,15 @@ static zend_result (*orig_post_startup_cb)(void);
 static zend_result accel_post_startup(void);
 static zend_result accel_finish_startup(void);
 
+#ifndef ZEND_WIN32
+# define PRELOAD_SUPPORT
+#endif
+
+#ifdef PRELOAD_SUPPORT
 static void preload_shutdown(void);
 static void preload_activate(void);
 static void preload_restart(void);
+#endif
 
 #ifdef ZEND_WIN32
 # define INCREMENT(v) InterlockedIncrement64(&ZCSG(v))
@@ -164,7 +173,7 @@ static void bzero_aligned(void *mem, size_t size)
 		_mm256_store_si256((__m256i*)(p+32), ymm0);
 		p += 64;
 	}
-#elif defined(__SSE2__)
+#elif defined(XSSE2)
 	char *p = (char*)mem;
 	char *end = p + size;
 	__m128i xmm0 = _mm_setzero_si128();
@@ -619,7 +628,7 @@ static inline void accel_copy_permanent_list_types(
 	zend_new_interned_string_func_t new_interned_string, zend_type type)
 {
 	zend_type *single_type;
-	ZEND_TYPE_FOREACH(type, single_type) {
+	ZEND_TYPE_FOREACH_MUTABLE(type, single_type) {
 		if (ZEND_TYPE_HAS_LIST(*single_type)) {
 			ZEND_ASSERT(ZEND_TYPE_IS_INTERSECTION(*single_type));
 			accel_copy_permanent_list_types(new_interned_string, *single_type);
@@ -2718,9 +2727,11 @@ ZEND_RINIT_FUNCTION(zend_accelerator)
 				}
 
 				zend_shared_alloc_restore_state();
+#ifdef PRELOAD_SUPPORT
 				if (ZCSG(preload_script)) {
 					preload_restart();
 				}
+#endif
 
 #ifdef HAVE_JIT
 				zend_jit_restart();
@@ -2762,9 +2773,11 @@ ZEND_RINIT_FUNCTION(zend_accelerator)
 	zend_jit_activate();
 #endif
 
+#ifdef PRELOAD_SUPPORT
 	if (ZCSG(preload_script)) {
 		preload_activate();
 	}
+#endif
 
 	return SUCCESS;
 }
@@ -3321,6 +3334,54 @@ static zend_result accel_post_startup(void)
 #endif
 		accel_shared_globals = calloc(1, sizeof(zend_accel_shared_globals));
 	}
+
+	/* opcache.file_cache_read_only should only be enabled when all script files are read-only */
+	int file_cache_access_mode = 0;
+
+	if (ZCG(accel_directives).file_cache_read_only) {
+		zend_accel_error(ACCEL_LOG_INFO, "opcache.file_cache is in read-only mode");
+
+		if (!ZCG(accel_directives).file_cache) {
+			accel_startup_ok = false;
+			zend_accel_error_noreturn(ACCEL_LOG_FATAL, "opcache.file_cache_read_only is set without a proper setting of opcache.file_cache");
+			return SUCCESS;
+		}
+
+		/* opcache.file_cache is read only, so ensure the directory is readable */
+#ifndef ZEND_WIN32
+		file_cache_access_mode = R_OK | X_OK;
+#else
+		file_cache_access_mode = 04; // Read access
+#endif
+	} else {
+		/* opcache.file_cache isn't read only, so ensure the directory is writable */
+#ifndef ZEND_WIN32
+		file_cache_access_mode = R_OK | W_OK | X_OK;
+#else
+		file_cache_access_mode = 06; // Read and write access
+#endif
+	}
+
+	if ( ZCG(accel_directives).file_cache ) {
+		zend_accel_error(ACCEL_LOG_INFO, "opcache.file_cache running with PHP build ID: %.32s", zend_system_id);
+
+		zend_stat_t buf = {0};
+
+		if (!IS_ABSOLUTE_PATH(ZCG(accel_directives).file_cache, strlen(ZCG(accel_directives).file_cache)) ||
+			zend_stat(ZCG(accel_directives).file_cache, &buf) != 0 ||
+			!S_ISDIR(buf.st_mode) ||
+#ifndef ZEND_WIN32
+			access(ZCG(accel_directives).file_cache, file_cache_access_mode) != 0
+#else
+			_access(ZCG(accel_directives).file_cache, file_cache_access_mode) != 0
+#endif
+			) {
+			accel_startup_ok = false;
+			zend_accel_error_noreturn(ACCEL_LOG_FATAL, "opcache.file_cache must be a full path of an accessible directory");
+			return SUCCESS;
+		}
+	}
+
 #if ENABLE_FILE_CACHE_FALLBACK
 file_cache_fallback:
 #endif
@@ -3415,9 +3476,11 @@ void accel_shutdown(void)
 		return;
 	}
 
+#ifdef PRELOAD_SUPPORT
 	if (ZCSG(preload_script)) {
 		preload_shutdown();
 	}
+#endif
 
 	_file_cache_only = file_cache_only;
 
@@ -3433,6 +3496,8 @@ void accel_shutdown(void)
 		/* Delay SHM detach */
 		orig_post_shutdown_cb = zend_post_shutdown_cb;
 		zend_post_shutdown_cb = accel_post_shutdown;
+	} else {
+		free(accel_shared_globals);
 	}
 
 	zend_compile_file = accelerator_orig_compile_file;
@@ -3526,6 +3591,7 @@ void accelerator_shm_read_unlock(void)
 }
 
 /* Preloading */
+#ifdef PRELOAD_SUPPORT
 static HashTable *preload_scripts = NULL;
 static zend_op_array *(*preload_orig_compile_file)(zend_file_handle *file_handle, int type);
 
@@ -4727,7 +4793,6 @@ static void preload_send_header(sapi_header_struct *sapi_header, void *server_co
 {
 }
 
-#ifndef ZEND_WIN32
 static zend_result accel_finish_startup_preload(bool in_child)
 {
 	zend_result ret = SUCCESS;
