@@ -2760,11 +2760,8 @@ ZEND_API size_t ZEND_FASTCALL _zend_mm_block_size(zend_mm_heap *heap, void *ptr 
 		} else if (heap->custom_heap._malloc != poison_malloc) {
 			return 0;
 		}
-<<<<<<< HEAD
 		ZEND_MM_POISON_HEAP(heap);
 		return 0;
-=======
->>>>>>> origin/master
 	}
 #endif
 	size_t ret = zend_mm_size(heap, ptr ZEND_FILE_LINE_RELAY_CC ZEND_FILE_LINE_ORIG_RELAY_CC);
