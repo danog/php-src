@@ -13,6 +13,8 @@ PHP                                                                        NEWS
   . Fixed GH-18695 (zend_ast_export() - float number is not preserved).
     (Oleg Efimov)
   . Fix handling of references in zval_try_get_long(). (nielsdos)
+  . Do not delete main chunk in zend_gc. (danog, Arnaud)
+  . Fix compile issues with zend_alloc and some non-default options. (nielsdos)
 
 - Curl:
   . Fix memory leak when setting a list via curl_setopt fails. (nielsdos)
@@ -31,15 +33,32 @@ PHP                                                                        NEWS
   . Fix memory leak in intl_datetime_decompose() on failure. (nielsdos)
   . Fix memory leak in locale lookup on failure. (nielsdos)
 
+- Opcache:
+  . Fixed bug GH-18743 (Incompatibility in Inline TLS Assembly on Alpine 3.22).
+    (nielsdos, Arnaud)
+
+- ODBC:
+  . Fix memory leak on php_odbc_fetch_hash() failure. (nielsdos)
+
 - OpenSSL:
   . Fix memory leak of X509_STORE in php_openssl_setup_verify() on failure.
     (nielsdos)
   . Fixed bug #74796 (Requests through http proxy set peer name).
     (Jakub Zelenka)
 
+- PDO ODBC:
+  . Fix memory leak if WideCharToMultiByte() fails. (nielsdos)
+
+- PDO Sqlite:
+  . Fixed memory leak with Pdo_Sqlite::createCollation when the callback
+    has an incorrect return type. (David Carlier)
+
 - Phar:
   . Add missing filter cleanups on phar failure. (nielsdos)
   . Fixed bug GH-18642 (Signed integer overflow in ext/phar fseek). (nielsdos)
+
+- PHPDBG:
+  . Fix 'phpdbg --help' segfault on shutdown with USE_ZEND_ALLOC=0. (nielsdos)
 
 - PGSQL:
   . Fix warning not being emitted when failure to cancel a query with
