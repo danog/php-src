@@ -42,8 +42,8 @@ static zend_always_inline void i_zval_ptr_dtor(zval *zval_ptr)
 	if (Z_REFCOUNTED_P(zval_ptr)) {
 		zend_refcounted *ref = Z_COUNTED_P(zval_ptr);
 		if (!GC_DELREF(ref)) {
-			printf("Freeing %p\n", zval_ptr);
-			fflush(stdout);
+			//printf("Freeing %p\n", zval_ptr);
+			//fflush(stdout);
 			rc_dtor_func(ref);
 		} else {
 			gc_check_possible_root(ref);
