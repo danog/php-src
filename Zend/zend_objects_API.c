@@ -106,7 +106,8 @@ ZEND_API void ZEND_FASTCALL zend_objects_store_free_object_storage(zend_objects_
 
 //zend_mm_validate(zend_mm_get_heap());
 //puts("Pre flags OK\n");
-
+					
+					printf("Invoking free on %p during free_object_storage\n", obj);
 					GC_ADD_FLAGS(obj, IS_OBJ_FREE_CALLED);
 
 //zend_mm_validate(zend_mm_get_heap());
