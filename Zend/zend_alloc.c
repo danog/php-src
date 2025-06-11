@@ -927,7 +927,9 @@ static zend_always_inline void zend_mm_chunk_init(zend_mm_heap *heap, zend_mm_ch
 {
 	chunk->heap = heap;
 	chunk->next = heap->main_chunk;
+	ZEND_MM_UNPOISON_CHUNK_HDR(heap->main_chunk);
 	chunk->prev = heap->main_chunk->prev;
+	ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 	chunk->prev->next = chunk;
 	chunk->next->prev = chunk;
 	/* mark first pages as allocated */
@@ -1164,7 +1166,9 @@ found:
 		/* move chunk into the head of the linked-list */
 		chunk->prev->next = chunk->next;
 		chunk->next->prev = chunk->prev;
+		ZEND_MM_UNPOISON_CHUNK_HDR(heap->main_chunk);
 		chunk->next = heap->main_chunk->next;
+		ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 		chunk->prev = heap->main_chunk;
 		chunk->prev->next = chunk;
 		chunk->next->prev = chunk;
@@ -2614,7 +2618,7 @@ ZEND_API void zend_mm_shutdown(zend_mm_heap *heap, bool full, bool silent)
 		heap->chunks_count--;
 		heap->cached_chunks_count++;
 	}
-	ZEND_MM_POISON_CHUNK_HDR(p, heap);
+	ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 
 
 	if (full) {
