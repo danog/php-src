@@ -2587,7 +2587,7 @@ ZEND_API void zend_mm_shutdown(zend_mm_heap *heap, bool full, bool silent)
 		zend_mm_chunk *q = p->next;
 		p->next = heap->cached_chunks;
 		heap->cached_chunks = p;
-		ZEND_MM_POISON_CHUNK(p);
+		ZEND_MM_POISON_CHUNK(p, heap);
 		p = q;
 		ZEND_MM_UNPOISON_CHUNK_HDR(p);
 		heap->chunks_count--;
