@@ -2639,6 +2639,7 @@ ZEND_API void ZEND_FASTCALL _zend_mm_validate(zend_mm_heap *heap)
 			zend_mm_get_next_free_slot(heap, i, slot);
 		}
 	}*/
+	return;
 	zend_mm_gc(heap);
 	zend_mm_gc(heap);
 }
