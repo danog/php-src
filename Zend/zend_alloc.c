@@ -201,6 +201,13 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 
 #define ZEND_MM_UNPOISON_CHUNK_HDR(_ptr) ZEND_MM_UNPOISON((_ptr), sizeof(zend_mm_chunk));
 
+#define ZEND_MM_POISON_CHUNK(_ptr, _heap) do { \
+	ZEND_MM_POISON((_ptr), ZEND_MM_CHUNK_SIZE); \
+	ZEND_MM_UNPOISON_HEAP((_heap)); \
+} while (0);
+
+#define ZEND_MM_UNPOISON_CHUNK(_ptr) ZEND_MM_UNPOISON((_ptr), ZEND_MM_CHUNK_SIZE);
+
 #else
 
 #define ZEND_MM_POISON
@@ -209,6 +216,8 @@ static size_t _real_page_size = ZEND_MM_PAGE_SIZE;
 #define ZEND_MM_UNPOISON_HEAP
 #define ZEND_MM_POISON_CHUNK_HDR
 #define ZEND_MM_UNPOISON_CHUNK_HDR
+#define ZEND_MM_POISON_CHUNK
+#define ZEND_MM_UNPOISON_CHUNK
 
 #endif
 typedef uint32_t   zend_mm_page_info; /* 4-byte integer */
@@ -1211,7 +1220,7 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 		heap->cached_chunks_count++;
 		chunk->next = heap->cached_chunks;
 		heap->cached_chunks = chunk;
-		ZEND_MM_POISON(chunk, ZEND_MM_CHUNK_SIZE);
+		ZEND_MM_POISON_CHUNK(chunk);
 	} else {
 #if ZEND_MM_STAT || ZEND_MM_LIMIT
 		heap->real_size -= ZEND_MM_CHUNK_SIZE;
@@ -1229,12 +1238,11 @@ static zend_always_inline void zend_mm_delete_chunk(zend_mm_heap *heap, zend_mm_
 		} else {
 //TODO: select the best chunk to delete???
 
-			// Unpoison chunk before accessing the next pointer & freeing it
-			ZEND_MM_UNPOISON(heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
+			ZEND_MM_UNPOISON_CHUNK_HDR(heap->cached_chunks);
 			chunk->next = heap->cached_chunks->next;
 			zend_mm_chunk_free(heap, heap->cached_chunks, ZEND_MM_CHUNK_SIZE);
 			heap->cached_chunks = chunk;
-			ZEND_MM_POISON(chunk, ZEND_MM_CHUNK_SIZE);
+			ZEND_MM_POISON_CHUNK(chunk);
 		}
 	}
 }
@@ -2582,7 +2590,7 @@ ZEND_API void zend_mm_shutdown(zend_mm_heap *heap, bool full, bool silent)
 		zend_mm_chunk *q = p->next;
 		p->next = heap->cached_chunks;
 		heap->cached_chunks = p;
-		ZEND_MM_POISON_CHUNK_HDR(p);
+		ZEND_MM_POISON_CHUNK(p);
 		p = q;
 		ZEND_MM_UNPOISON_CHUNK_HDR(p);
 		heap->chunks_count--;
