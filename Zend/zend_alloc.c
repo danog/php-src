@@ -931,7 +931,6 @@ static zend_always_inline void zend_mm_chunk_init(zend_mm_heap *heap, zend_mm_ch
 	chunk->prev = heap->main_chunk->prev;
 	chunk->prev->next = chunk;
 	chunk->next->prev = chunk;
-	ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 	/* mark first pages as allocated */
 	chunk->free_pages = ZEND_MM_PAGES - ZEND_MM_FIRST_PAGE;
 	chunk->free_tail = ZEND_MM_FIRST_PAGE;
@@ -940,6 +939,7 @@ static zend_always_inline void zend_mm_chunk_init(zend_mm_heap *heap, zend_mm_ch
 	/* mark first pages as allocated */
 	chunk->free_map[0] = (1L << ZEND_MM_FIRST_PAGE) - 1;
 	chunk->map[0] = ZEND_MM_LRUN(ZEND_MM_FIRST_PAGE);
+	ZEND_MM_POISON_CHUNK_HDR(heap->main_chunk, heap);
 }
 
 /***********************/
